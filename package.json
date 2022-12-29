@@ -1,0 +1,44 @@
+{
+  "name": "mixer-connection",
+  "version": "0.0.0",
+  "description": "Typescript Node.js library for connecting to a digital mixer",
+  "main": "dist/index.js",
+  "scripts": {
+    "watch": "npm-run-all -p watch:*",
+    "watch:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics --watch",
+    "watch:copy-types": "onchange -i ./src -- npm-run-all -s build:copy*",
+    "build": "npm-run-all -s build:*",
+    "build:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics",
+    "build:copy-types": "cpy . ../../dist/types/ --cwd=src/types --parents"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markschwartzkopf/mixer-connection.git"
+  },
+  "keywords": [
+    "Behringer",
+    "X32",
+    "M32",
+    "Wing",
+    "Xair",
+    "XR12",
+    "XR16",
+    "XR18"
+  ],
+  "author": "Mark Schwartzkopf",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/markschwartzkopf/mixer-connection/issues"
+  },
+  "homepage": "https://github.com/markschwartzkopf/mixer-connection#readme",
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
+    "@typescript-eslint/parser": "^5.47.1",
+    "cpy-cli": "^4.2.0",
+    "eslint": "^8.30.0",
+    "npm-run-all": "^4.1.5",
+    "onchange": "^7.1.0",
+    "typescript": "^4.9.4"
+  }
+}
