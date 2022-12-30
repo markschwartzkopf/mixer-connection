@@ -47,10 +47,22 @@ class Mixer extends EventEmitter {
 				break;
 			default:
 				this.emit('error', new Error('Invalid mixer model: ' + model));
-        this._module = new X32(address);
-        console.error('switch this to noMixer');
+				this._module = new X32(address);
+				console.error('switch this to noMixer');
 				break;
 		}
+		this._module.on('info', (info) => {
+			this.emit('info', info);
+		});
+		this._module.on('connected', () => {
+			this.emit('connected');
+		});
+		this._module.on('closed', () => {
+			this.emit('closed');
+		});
+		this._module.on('error', (err) => {
+			this.emit('error', err);
+		});
 	}
 
 	close() {

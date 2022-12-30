@@ -4,11 +4,12 @@ type OscArgument =
 	| { type: 's'; data: string }
 	| { type: 'b'; data: Buffer };
 
-export type OscCmd = { cmd: string; args?: OscArgument[] };
+export type OscMsg = { address: string; args?: OscArgument[] };
+type OscMsgError = { address: string; args: 'Error' };
 
-export function oscCmdToBuffer(oscCmd: OscCmd): Buffer {
-	const args = oscCmd.args ? oscCmd.args : [];
-	const cmdBuf = stringToBuffer(oscCmd.cmd);
+export function oscMsgToBuffer(oscMsg: OscMsg): Buffer {
+	const args = oscMsg.args ? oscMsg.args : [];
+	const addressBuf = stringToBuffer(oscMsg.address);
 	let argTypes = ',';
 	const argBufs: Buffer[] = [];
 	if (args.length > 0) {
@@ -19,62 +20,87 @@ export function oscCmdToBuffer(oscCmd: OscCmd): Buffer {
 	}
 	const typesBuf = stringToBuffer(argTypes);
 	const argsBuf = Buffer.concat(argBufs);
-	return Buffer.concat([cmdBuf, typesBuf, argsBuf]);
+	return Buffer.concat([addressBuf, typesBuf, argsBuf]);
 }
 
-export function bufferToOscCmd(buf: Buffer): OscCmd | Error {
-  //get cmd:
+export function bufferToOscMsg(buf: Buffer): OscMsg | OscMsgError {
+	//get address:
 	let split = buf.indexOf(0);
-	if (split === -1) return new Error('Bad OSC Buffer format: no null bytes');
-	const oscCmd: OscCmd = { cmd: buf.slice(0, split).toString() };
+	if (split === -1)
+		return { args: 'Error', address: 'Bad OSC Buffer format: no null bytes' };
+	const oscMsg: OscMsg = { address: buf.subarray(0, split).toString() };
 	split++;
 	split = Math.ceil(split / 4) * 4;
-	buf = buf.slice(split);
+	buf = buf.subarray(split);
 
-  //get argument formats:
+	//get argument formats:
 	split = buf.indexOf(0);
 	if (split === -1)
-		return new Error('Bad OSC Buffer format: missing null byte');
-	const argFormats = buf.slice(0, split).toString().split('');
+		return {
+			args: 'Error',
+			address: 'Bad OSC Buffer format: missing null byte',
+		};
+	const argFormats = buf.subarray(0, split).toString().split('');
 	if (argFormats[0] != ',')
-		return new Error('Bad OSC Buffer format: no format(s)');
+		return { args: 'Error', address: 'Bad OSC Buffer format: no format(s)' };
 	argFormats.shift();
-  split = Math.ceil(split / 4) * 4;
-	buf = buf.slice(split);
+	split++;
+	split = Math.ceil(split / 4) * 4;
+	buf = buf.subarray(split);
 
-  //get arguments declared in format section
+	//get arguments declared in format section
 	for (let i = 0; i < argFormats.length; i++) {
 		if (buf.length < 4)
-			return new Error(
-				'Bad OSC Buffer format: missing argument(s) with declared format(s)'
-			);
+			return {
+				args: 'Error',
+				address:
+					'Bad OSC Buffer format: missing argument(s) with declared format(s)',
+			};
 		let bufEnd = 4;
+		let oscArgument: OscArgument | null = null;
 		switch (argFormats[i]) {
 			case 's':
 				{
 					const stringSize = buf.indexOf(0);
 					if (stringSize == -1)
-						return new Error('Bad OSC Buffer format: missing null byte');
+						return {
+							args: 'Error',
+							address: 'Bad OSC Buffer format: missing null byte',
+						};
 					bufEnd = stringSize + 1;
 					bufEnd = Math.ceil(bufEnd / 4) * 4;
-					const oscArgument: OscArgument = {
+					oscArgument = {
 						type: 's',
-						data: buf.slice(0, stringSize).toString(),
+						data: buf.subarray(0, stringSize).toString(),
 					};
-					if (oscCmd.args) {
-						oscCmd.args.push(oscArgument);
-					} else oscCmd.args = [oscArgument];
+				}
+				break;
+			case 'i':
+				{
+					oscArgument = { type: 'i', data: buf.readInt32BE() };
 				}
 				break;
 			default:
-				return new Error('Unknown OSC argument format: ' + argFormats[i]);
+				return {
+					args: 'Error',
+					address: 'Unknown OSC argument format: ' + argFormats[i],
+				};
 				break;
 		}
-		buf = buf.slice(bufEnd);
+		if (oscArgument) {
+			if (oscMsg.args) {
+				oscMsg.args.push(oscArgument);
+			} else oscMsg.args = [oscArgument];
+		}
+		buf = buf.subarray(bufEnd);
 	}
 	if (buf.length > 0)
-		return new Error('Bad OSC Buffer format: data without format');
-	return oscCmd;
+		return {
+			args: 'Error',
+			address: 'Bad OSC Buffer format: data without format',
+		};
+	console.log(oscMsg);
+	return oscMsg;
 }
 
 function stringToBuffer(str: string): Buffer {
