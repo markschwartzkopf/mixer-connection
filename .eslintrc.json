@@ -15,7 +15,8 @@
 	},
 	"plugins": ["@typescript-eslint"],
 	"rules": {
-		"quotes": ["error", "single"],
-		"semi": ["error", "always"]
+		"semi": ["error", "always"],
+    "@typescript-eslint/no-explicit-any": 0,
+    "no-mixed-spaces-and-tabs": 0
 	}
 }

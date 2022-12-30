@@ -76,8 +76,23 @@ export function bufferToOscMsg(buf: Buffer): OscMsg | OscMsgError {
 				}
 				break;
 			case 'i':
+				oscArgument = { type: 'i', data: buf.readInt32BE() };
+				break;
+			case 'f':
+				oscArgument = { type: 'f', data: buf.readFloatBE() };
+				break;
+			case 'b':
 				{
-					oscArgument = { type: 'i', data: buf.readInt32BE() };
+					const blobSize = buf.readInt32BE();
+					if (blobSize + 4 > buf.length)
+						return {
+							args: 'Error',
+							address: 'OSC from X32 missing data claimed by format: blob',
+						};
+					bufEnd = 4 + blobSize;
+					bufEnd = Math.ceil(bufEnd / 4) * 4;
+					const blobData = buf.subarray(4, 4 + blobSize);
+					oscArgument = { type: 'b', data: blobData };
 				}
 				break;
 			default:

@@ -1,7 +1,7 @@
 import EventEmitter from 'events';
 import * as dgram from 'dgram';
-import { MixerModule, MixerStatus, NodeValue, ModuleEvents } from './types';
-import { bufferToOscMsg, OscMsg, oscMsgToBuffer } from './oscUtils';
+import { MixerModule, MixerStatus, NodeValue, ModuleEvents } from '../types';
+import { bufferToOscMsg, OscMsg, oscMsgToBuffer } from '../oscUtils';
 
 const REQUIRED_FIRMWARE_VERSION = '4.06';
 
@@ -42,7 +42,7 @@ export class X32 extends EventEmitter implements MixerModule {
 						);
 						this.close();
 					} else if (time > 10) {
-						//poke the X32 if it's been a bit
+						//poke the X32 since it's been a while since a msg:
 						this._send({ address: '/config/chlink/1-2' });
 					}
 				}, 5000);
@@ -139,6 +139,10 @@ export class X32 extends EventEmitter implements MixerModule {
 								'info',
 								`Connected to ${oscMsg.args[2].data} named ${oscMsg.args[1].data} at ${oscMsg.args[0].data}`
 							);
+              console.log('ye');
+							this._send({
+								address: '/ch/01/mix',
+							});
 						}
 					}
 					break;

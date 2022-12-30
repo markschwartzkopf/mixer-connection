@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import { X32 } from './x32';
+import { X32 } from './x32/x32';
 import { MixerModule } from './types';
 
 type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
