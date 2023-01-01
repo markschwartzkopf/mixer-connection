@@ -5,13 +5,10 @@ import {
 	MixerStatus,
 	NodeValue,
 	ModuleEvents,
-	MixerLeaf,
-	MixerNode,
-	MixerLeafError,
-	NodeObject,
+	MixerObject,
+  NodeObject,
 } from '../types';
 import { bufferToOscMsg, OscMsg, oscMsgToBuffer } from '../oscUtils';
-import { getValFromNode } from '../mixer-object-utils/mixer-object-utils';
 
 const REQUIRED_FIRMWARE_VERSION = '4.06';
 
@@ -26,7 +23,12 @@ export interface X32 {
 }
 
 export class X32 extends EventEmitter implements MixerModule {
-	private _status: MixerStatus;
+	status: MixerStatus;
+	mixerObject: MixerObject = {
+		strips: { ch: [], main: [] },
+		groups: { dca: [], muteGroup: [], layer: [] },
+		config: {},
+	};
 	private _udpSocket: dgram.Socket;
 	readonly address: string;
 	private _heartbeat: NodeJS.Timer | null = null;
@@ -35,7 +37,7 @@ export class X32 extends EventEmitter implements MixerModule {
 	constructor(address: string) {
 		super();
 		this.address = address;
-		this._status = 'CONNECTING';
+		this.status = 'CONNECTING';
 		this._udpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 		this._connect()
 			.then(() => {
@@ -65,35 +67,20 @@ export class X32 extends EventEmitter implements MixerModule {
 
 	close() {
 		this.emit('info', 'Closing connection to X32');
-		this._status = 'CLOSED';
+		this.status = 'CLOSED';
 		//if (this._subscription) clearInterval(this._subscription);
 		if (this._heartbeat) clearInterval(this._heartbeat);
 		this._udpSocket.close();
 	}
 
-	setValuePromise(address: string[], value: NodeValue): Promise<void> {
+	setValuePromise(address: string[], value: NodeValue | NodeObject): Promise<void> {
 		return new Promise((res, rej) => {
 			rej('code this');
 		});
 	}
 
-	setValue(address: string[], value: NodeValue) {
+	setValue(address: string[], value: NodeValue | NodeObject) {
 		console.error('code this');
-	}
-
-	getValue(
-		address: string[],
-		withMeta: 'withMeta'
-	): MixerLeaf | MixerNode | MixerLeafError;
-	getValue(address: string[]): NodeValue | NodeObject | null;
-	getValue(address: string[], withMeta?: 'withMeta') {
-    return withMeta
-			? getValFromNode(address, {}, withMeta)
-			: getValFromNode(address, {});
-	}
-
-	get status() {
-		return this._status;
 	}
 
 	private _connect() {
@@ -101,7 +88,7 @@ export class X32 extends EventEmitter implements MixerModule {
 			let initTimeout: NodeJS.Timeout | null = null;
 			this._udpSocket.on('close', () => {
 				if (this._heartbeat) clearInterval(this._heartbeat);
-				this._status = 'CLOSED';
+				this.status = 'CLOSED';
 				this.emit('closed');
 			});
 			this._udpSocket.on('error', (err) => {
@@ -135,8 +122,8 @@ export class X32 extends EventEmitter implements MixerModule {
 			this._lastValidMessage = Date.now();
 			switch (oscMsg.address) {
 				case '/xinfo':
-					if (this._status !== 'CONNECTED') {
-						this._status = 'CONNECTED';
+					if (this.status !== 'CONNECTED') {
+						this.status = 'CONNECTED';
 						this.emit('connected');
 						if (
 							!oscMsg.args ||

@@ -1,13 +1,9 @@
 export interface MixerModule {
-	setValuePromise: (address: string[], value: NodeValue) => Promise<void>;
-	setValue: (address: string[], value: NodeValue) => void;
-	getValue(
-		address: string[],
-		withMeta: 'withMeta'
-	): MixerLeaf | MixerNode | MixerLeafError;
-	getValue(address: string[]): NodeValue | NodeObject | null;
+	setValuePromise: (address: string[], value: NodeValue | NodeObject) => Promise<void>;
+	setValue: (address: string[], value: NodeValue | NodeObject) => void;
 	close: () => void;
 	status: MixerStatus;
+  mixerObject: MixerObject;
 
 	on<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;
 	once<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;

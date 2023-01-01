@@ -57,8 +57,8 @@ export interface NoMixer {
 }
 
 export class NoMixer extends EventEmitter implements MixerModule {
-	private _status: MixerStatus = 'CONNECTED';
-	private _mixerObject = newNoMixerObject();
+	status: MixerStatus = 'CONNECTED';
+	mixerObject = newNoMixerObject();
 
 	constructor(address?: string) {
 		super();
@@ -73,33 +73,18 @@ export class NoMixer extends EventEmitter implements MixerModule {
 
 	close() {
 		this.emit('info', 'Closing non-existent connection to noMixer');
-		this._status = 'CLOSED';
+		this.status = 'CLOSED';
 		this.emit('closed');
 	}
 
-	setValuePromise(address: string[], value: NodeValue): Promise<void> {
+	setValuePromise(address: string[], value: NodeValue | NodeObject): Promise<void> {
 		return new Promise((res, rej) => {
 			rej('code this');
 		});
 	}
 
-	setValue(address: string[], value: NodeValue) {
+	setValue(address: string[], value: NodeValue | NodeObject) {
 		console.error('code this');
-	}
-
-	getValue(
-		address: string[],
-		withMeta: 'withMeta'
-	): MixerLeaf | MixerNode | MixerLeafError;
-	getValue(address: string[]): NodeValue | NodeObject | null;
-	getValue(address: string[], withMeta?: 'withMeta') {
-		return withMeta
-			? getValFromNode(address, this._mixerObject, withMeta)
-			: getValFromNode(address, this._mixerObject);
-	}
-
-	get status() {
-		return this._status;
 	}
 }
 
