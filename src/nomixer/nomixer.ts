@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import {
+  getAddressValuePairs,
 	getValFromNode,
 	isError,
 	isLeaf,
@@ -77,18 +78,25 @@ export class NoMixer extends EventEmitter implements MixerModule {
 		this.emit('closed');
 	}
 
-	setValuePromise(address: string[], value: NodeValue | NodeObject): Promise<void> {
+	setValuePromise(
+		address: string[],
+		value: NodeValue | NodeObject
+	): Promise<void> {
 		return new Promise((res, rej) => {
 			rej('code this');
 		});
 	}
 
-	setValue(address: string[], value: NodeValue | NodeObject) {
-		console.error('code this');
+	setValue(
+		address: string[],
+		value: NodeValue | NodeObject,
+	): void {
+		const pairs = getAddressValuePairs(address, value, this);
+    console.log(pairs);
 	}
 }
 
-export function newNoMixerObject(): MixerObject {
+function newNoMixerObject(): MixerObject {
 	const rtn: MixerObject = {
 		strips: {
 			ch: (() => {

@@ -1,6 +1,6 @@
 export interface MixerModule {
 	setValuePromise: (address: string[], value: NodeValue | NodeObject) => Promise<void>;
-	setValue: (address: string[], value: NodeValue | NodeObject) => void;
+	setValue: (address: string[], value: NodeValue | NodeObject) => void | string;
 	close: () => void;
 	status: MixerStatus;
   mixerObject: MixerObject;
