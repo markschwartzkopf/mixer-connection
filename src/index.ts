@@ -1,6 +1,7 @@
 import EventEmitter from 'events';
 import { X32 } from './x32/x32';
-import { MixerModule } from './types';
+import { MixerLeaf, MixerLeafError, MixerModule, MixerNode, NodeObject, NodeValue } from './types';
+import { NoMixer } from './nomixer/nomixer';
 
 type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
 
@@ -42,8 +43,7 @@ class Mixer extends EventEmitter {
 				console.error('Code this mixer');
 				break;
 			case 'noMixer':
-				this._module = new X32(address);
-				console.error('Code this mixer');
+				this._module = new NoMixer(address);
 				break;
 			default:
 				this.emit('error', new Error('Invalid mixer model: ' + model));
@@ -71,6 +71,15 @@ class Mixer extends EventEmitter {
 
 	get status() {
 		return this._module.status;
+	}
+
+  getValue(
+		address: string[],
+		withMeta: 'withMeta'
+	): MixerLeaf | MixerNode | MixerLeafError;
+	getValue(address: string[]): NodeValue | NodeObject | null;
+	getValue(address: string[], withMeta?: 'withMeta') {
+		return withMeta? this._module.getValue(address, withMeta) : this._module.getValue(address);
 	}
 }
 

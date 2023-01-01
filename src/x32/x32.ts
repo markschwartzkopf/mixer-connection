@@ -1,7 +1,17 @@
 import EventEmitter from 'events';
 import * as dgram from 'dgram';
-import { MixerModule, MixerStatus, NodeValue, ModuleEvents } from '../types';
+import {
+	MixerModule,
+	MixerStatus,
+	NodeValue,
+	ModuleEvents,
+	MixerLeaf,
+	MixerNode,
+	MixerLeafError,
+	NodeObject,
+} from '../types';
 import { bufferToOscMsg, OscMsg, oscMsgToBuffer } from '../oscUtils';
+import { getValFromNode } from '../mixer-object-utils/mixer-object-utils';
 
 const REQUIRED_FIRMWARE_VERSION = '4.06';
 
@@ -61,16 +71,25 @@ export class X32 extends EventEmitter implements MixerModule {
 		this._udpSocket.close();
 	}
 
-	setNode(address: string[], value: NodeValue): Promise<void> {
+	setValuePromise(address: string[], value: NodeValue): Promise<void> {
 		return new Promise((res, rej) => {
 			rej('code this');
 		});
 	}
 
-	getNode(address: string[], value: NodeValue): Promise<NodeValue> {
-		return new Promise((res, rej) => {
-			rej('code this');
-		});
+	setValue(address: string[], value: NodeValue) {
+		console.error('code this');
+	}
+
+	getValue(
+		address: string[],
+		withMeta: 'withMeta'
+	): MixerLeaf | MixerNode | MixerLeafError;
+	getValue(address: string[]): NodeValue | NodeObject | null;
+	getValue(address: string[], withMeta?: 'withMeta') {
+    return withMeta
+			? getValFromNode(address, {}, withMeta)
+			: getValFromNode(address, {});
 	}
 
 	get status() {
@@ -139,7 +158,7 @@ export class X32 extends EventEmitter implements MixerModule {
 								'info',
 								`Connected to ${oscMsg.args[2].data} named ${oscMsg.args[1].data} at ${oscMsg.args[0].data}`
 							);
-              console.log('ye');
+							console.log('ye');
 							this._send({
 								address: '/ch/01/mix',
 							});
