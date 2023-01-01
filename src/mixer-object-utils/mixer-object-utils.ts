@@ -35,7 +35,8 @@ export function getValFromNode(
 	} else {
 		nodeOrLeaf = node[first];
 	}
-  if (!nodeOrLeaf) return { _type: 'error', error: `address ${first} does not exist` };
+	if (!nodeOrLeaf)
+		return { _type: 'error', error: `address ${first} does not exist` };
 	if (address.length) {
 		if (isLeaf(nodeOrLeaf)) {
 			return { _type: 'error', error: 'address does not exist' };
@@ -76,6 +77,28 @@ function removeMeta(nodeOrLeaf: MixerNode | MixerLeaf): NodeObject | NodeValue {
 	}
 }
 
-function isLeafArray(test: MixerNode[] | MixerLeaf[]): test is MixerLeaf[] {
-	return test.length === 0 || isLeaf(test[0]);
+export function cloneMixerNode(obj: CloneObj): any {
+	if (Array.isArray(obj)) {
+		const copy: CloneObj = [];
+		for (let i = 0; i < obj.length; i++) {
+			const element = obj[i];
+			if (typeof element === 'object') {
+				copy.push(cloneMixerNode(element));
+			} else copy.push(element);
+		}
+    return copy;
+	} else {
+		const copy: CloneObj = {};
+		Object.keys(obj).forEach((key) => {
+			const prop = obj[key];
+			if (typeof prop === 'object') {
+				copy[key] = cloneMixerNode(prop);
+			} else copy[key] = prop;
+		});
+    return copy;
+	}
 }
+
+type CloneObj =
+	| { [k: string]: CloneObj | string | number | boolean }
+	| (CloneObj | string | number | boolean)[];

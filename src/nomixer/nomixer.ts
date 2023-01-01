@@ -67,7 +67,7 @@ export class NoMixer extends EventEmitter implements MixerModule {
 				'info',
 				`Connected to noMixer at theoretical address ${address}`
 			);
-      this.emit('connected');
+			this.emit('connected');
 		}, 500);
 	}
 

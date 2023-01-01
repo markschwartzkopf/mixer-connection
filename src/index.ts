@@ -1,7 +1,15 @@
 import EventEmitter from 'events';
 import { X32 } from './x32/x32';
-import { MixerLeaf, MixerLeafError, MixerModule, MixerNode, NodeObject, NodeValue } from './types';
+import {
+	MixerLeaf,
+	MixerLeafError,
+	MixerModule,
+	MixerNode,
+	NodeObject,
+	NodeValue,
+} from './types';
 import { NoMixer } from './nomixer/nomixer';
+import { cloneMixerNode } from './mixer-object-utils/mixer-object-utils';
 
 type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
 
@@ -73,13 +81,15 @@ class Mixer extends EventEmitter {
 		return this._module.status;
 	}
 
-  getValue(
+	getValue(
 		address: string[],
 		withMeta: 'withMeta'
 	): MixerLeaf | MixerNode | MixerLeafError;
 	getValue(address: string[]): NodeValue | NodeObject | null;
 	getValue(address: string[], withMeta?: 'withMeta') {
-		return withMeta? this._module.getValue(address, withMeta) : this._module.getValue(address);
+		return withMeta
+			? cloneMixerNode(this._module.getValue(address, withMeta))
+			: this._module.getValue(address);
 	}
 }
 
