@@ -1,11 +1,5 @@
-import {
-	MixerLeaf,
-	MixerLeafError,
-	MixerModule,
-	MixerNode,
-	NodeObject,
-	NodeValue,
-} from '../types';
+import { MixerModule, MixerNode, NodeObject, NodeValue } from '../types';
+import { MixerLeaf, MixerLeafError } from './leaf-types';
 
 export function getValFromNode(
 	address: string[],
@@ -72,13 +66,13 @@ function removeMeta(nodeOrLeaf: MixerNode | MixerLeaf): NodeObject | NodeValue {
 	} else {
 		const rtnObject: NodeObject = {};
 		Object.keys(nodeOrLeaf).forEach((prop) => {
-			rtnObject[prop] = removeMeta(nodeOrLeaf[prop]);
+			if (prop != '_key') rtnObject[prop] = removeMeta(nodeOrLeaf[prop]);
 		});
 		return rtnObject;
 	}
 }
 
-export function cloneMixerNode(obj: CloneObj): any {
+export function cloneMixerNode(obj: CloneObj | MixerLeaf): any {
 	if (Array.isArray(obj)) {
 		const copy: CloneObj = [];
 		for (let i = 0; i < obj.length; i++) {
@@ -91,9 +85,11 @@ export function cloneMixerNode(obj: CloneObj): any {
 	} else {
 		const copy: CloneObj = {};
 		Object.keys(obj).forEach((key) => {
-			const prop = obj[key];
+			const prop = (
+				obj as { [k: string]: CloneObj | string | number | boolean | MixerLeaf }
+			)[key];
 			if (typeof prop === 'object') {
-				copy[key] = cloneMixerNode(prop);
+				copy[key] = cloneMixerNode({ ...prop });
 			} else copy[key] = prop;
 		});
 		return copy;
@@ -101,8 +97,8 @@ export function cloneMixerNode(obj: CloneObj): any {
 }
 
 type CloneObj =
-	| { [k: string]: CloneObj | string | number | boolean }
-	| (CloneObj | string | number | boolean)[];
+	| { [k: string]: CloneObj | string | number | boolean | MixerLeaf }
+	| (CloneObj | string | number | boolean | MixerLeaf)[];
 
 export function getAddressValuePairs(
 	address: string[],
@@ -110,8 +106,11 @@ export function getAddressValuePairs(
 	module: MixerModule,
 	node?: MixerNode | MixerLeaf,
 	oAddress?: string[]
-): { address: string[]; value: string | number | boolean }[] {
-	if (!node) node = module.mixerObject;
+): {
+	keys?: string[][];
+	other: { address: string[]; value: string | number | boolean }[];
+} {
+	if (!node) node = module.mixerObject; //.groups.layer[0].assigned[0];
 	if (!oAddress) oAddress = [...address];
 	const first = address[0];
 	address = address.slice(1);
@@ -122,117 +121,117 @@ export function getAddressValuePairs(
 					'error',
 					new Error(`Can't assign object value to ${oAddress.join('/')}`)
 				);
-				return [];
+				return {other: []};
 			} else {
 				console.log('code object val assignment');
-				return [];
+				return {other: []};
 			}
 		} else {
 			if (isLeaf(node)) {
 				switch (node._type) {
 					case 'boolean':
 						if (typeof value === 'boolean') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to boolean type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to boolean type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'enum':
 						if (typeof value === 'string' && node.enum.indexOf(value) !== -1) {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${value} to enum type leaf ${oAddress.join(
+									`Attempted to assign ${value} to enum type leaf: ${oAddress.join(
 										'/'
 									)}. Possible values: ${node.enum.toString()}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'exponential':
 						if (typeof value === 'number') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to number type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to number type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'index':
 						if (typeof value === 'number') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to number type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to number type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'level':
 						if (typeof value === 'number' || value === '-oo') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to number type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to number type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'linear':
 						if (typeof value === 'number') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to number type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to number type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'string':
 						if (typeof value === 'string') {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${typeof value} to string type leaf ${oAddress.join(
+									`Attempted to assign ${typeof value} to string type leaf: ${oAddress.join(
 										'/'
 									)}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
 						break;
 					case 'stripType':
@@ -240,27 +239,38 @@ export function getAddressValuePairs(
 							typeof value === 'string' &&
 							Object.keys(module.mixerObject.strips).indexOf(value) !== -1
 						) {
-							return [{ address: oAddress, value: value }];
+							return { other: [{ address: oAddress, value: value }] };
 						} else {
 							module.emit(
 								'error',
 								new Error(
-									`Attempted to assign ${value} to channel strip type leaf ${oAddress.join(
+									`Attempted to assign ${value} to channel strip type leaf: ${oAddress.join(
 										'/'
 									)}. Possible values: ${Object.keys(
 										module.mixerObject.strips
 									).toString()}`
 								)
 							);
-							return [];
+							return {other: []};
 						}
+						break;
+					case 'key':
+						module.emit(
+							'error',
+							new Error(
+								`Attempted to assign value to readonly key type leaf: ${oAddress.join(
+									'/'
+								)}`
+							)
+						);
+						return {other: []};
 						break;
 					default:
 						module.emit(
 							'error',
 							new Error(`Type not implemented. Fix nomixer.ts`)
 						);
-						return [];
+						return {other: []};
 						break;
 				}
 			} else {
@@ -268,20 +278,20 @@ export function getAddressValuePairs(
 					'error',
 					new Error(`Only NodeObjects can be assigned to ${oAddress.join('/')}`)
 				);
-				return [];
+				return {other: []};
 			}
 		}
 	} else {
 		if (isLeaf(node)) {
 			module.emit('error', new Error(`Address ${first} does not exist`));
-			return [];
+			return {other: []};
 		}
 		const leafOrNode = Array.isArray(node)
 			? node[parseInt(first)]
 			: node[first];
 		if (!leafOrNode) {
 			module.emit('error', new Error(`Address ${first} does not exist`));
-			return [];
+			return {other: []};
 		} else
 			return getAddressValuePairs(address, value, module, leafOrNode, oAddress);
 	}

@@ -1,9 +1,25 @@
+import {
+	MixerBoolean,
+	MixerEnum,
+	MixerExponential,
+	MixerIndex,
+	MixerKey,
+	MixerLeaf,
+	MixerLevel,
+	MixerLinear,
+	MixerString,
+	MixerStripType,
+} from '../mixer-object-utils/leaf-types';
+
 export interface MixerModule {
-	setValuePromise: (address: string[], value: NodeValue | NodeObject) => Promise<void>;
+	setValuePromise: (
+		address: string[],
+		value: NodeValue | NodeObject
+	) => Promise<void>;
 	setValue: (address: string[], value: NodeValue | NodeObject) => void | string;
 	close: () => void;
 	status: MixerStatus;
-  mixerObject: MixerObject;
+	mixerObject: MixerObject;
 
 	on<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;
 	once<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;
@@ -20,7 +36,6 @@ interface ModuleEvents {
 	connected: () => void;
 }
 
-type MixerLeafError = { _type: 'error'; error: string };
 type NodeValue = MixerLeaf['value'];
 type NodeObject =
 	| { [k: string]: NodeValue | NodeObject }
@@ -130,7 +145,9 @@ type MixerMuteGroup = {
 };
 type MixerLayer = {
 	name: MixerString;
-	assigned: (
+	assigned: ({
+		_key: MixerKey;
+	} & (
 		| {
 				on: {
 					_type: 'boolean';
@@ -145,7 +162,7 @@ type MixerLayer = {
 					value: false;
 				};
 		  }
-	)[];
+	))[];
 };
 type MixerIcons = {
 	[k: string]: MixerString; //name: base64 image
@@ -163,7 +180,7 @@ type MixerDynamicsPlugin = (
 				value: 'comp' | 'exp';
 				enum: MixerDynamicsPlugin['type']['value'][];
 			};
-			customType?: MixerEnum;
+			custom: MixerNode;
 			env: {
 				_type: 'enum';
 				value: 'lin' | 'log';
@@ -184,7 +201,7 @@ type MixerDynamicsPlugin = (
 				value: 'gate' | 'duck';
 				enum: MixerDynamicsPlugin['type']['value'][];
 			};
-			customType?: MixerEnum;
+			custom: MixerNode;
 			env: {
 				_type: 'enum';
 				value: 'lin' | 'log';
@@ -203,7 +220,7 @@ type MixerDynamicsPlugin = (
 				value: 'other';
 				enum: MixerDynamicsPlugin['type']['value'][];
 			};
-			customType: MixerEnum;
+			custom: MixerNode;
 	  }
 ) & {
 	on: MixerBoolean;
@@ -223,55 +240,4 @@ type MixerDynamicsPlugin = (
 			q?: MixerLinear; //q or slope
 		};
 	};
-};
-
-type MixerLeaf =
-	| MixerEnum
-	| MixerString
-	| MixerLevel
-	| MixerLinear
-	| MixerExponential
-	| MixerIndex
-	| MixerBoolean
-	| MixerStripType
-type MixerEnum = {
-	_type: 'enum';
-	value: string; //default is first element of enum
-	enum: string[];
-};
-type MixerString = {
-	_type: 'string';
-	value: string; //default is ''
-};
-type MixerLevel = {
-	_type: 'level';
-	value: number | '-oo'; //default is '-oo'
-	max: number;
-};
-type MixerLinear = {
-	_type: 'linear';
-	value: number; //default is default | min
-	default?: number;
-	min: number;
-	max: number;
-};
-type MixerExponential = {
-	_type: 'exponential';
-	value: number; //default is default | min
-	default?: number;
-	min: number;
-	max: number;
-};
-type MixerIndex = {
-	_type: 'index';
-	value: number; //default 1
-	max: number;
-};
-type MixerBoolean = {
-	_type: 'boolean';
-	value: boolean;
-};
-type MixerStripType = {
-	_type: 'stripType';
-	value: keyof MixerObject['strips'];
 };

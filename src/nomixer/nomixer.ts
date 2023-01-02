@@ -1,10 +1,15 @@
 import EventEmitter from 'events';
 import {
-  getAddressValuePairs,
-	getValFromNode,
-	isError,
-	isLeaf,
-} from '../mixer-object-utils/mixer-object-utils';
+	MixerBoolean,
+	MixerEnum,
+	MixerIndex,
+	MixerKey,
+	MixerLevel,
+	MixerLinear,
+	MixerString,
+	MixerStripType,
+} from '../mixer-object-utils/leaf-types';
+import { getAddressValuePairs } from '../mixer-object-utils/mixer-object-utils';
 import {
 	MixerModule,
 	MixerStatus,
@@ -13,12 +18,8 @@ import {
 	MixerObject,
 	MixerStrip,
 	MixerDca,
-	MixerBoolean,
 	MixerLayer,
-	MixerLeaf,
-	MixerLeafError,
 	NodeObject,
-	MixerNode,
 } from '../types';
 
 const iconEnum = {
@@ -82,17 +83,15 @@ export class NoMixer extends EventEmitter implements MixerModule {
 		address: string[],
 		value: NodeValue | NodeObject
 	): Promise<void> {
-		return new Promise((res, rej) => {
-			rej('code this');
+		return new Promise((res) => {
+			this.setValue(address, value);
+			res();
 		});
 	}
 
-	setValue(
-		address: string[],
-		value: NodeValue | NodeObject,
-	): void {
+	setValue(address: string[], value: NodeValue | NodeObject): void {
 		const pairs = getAddressValuePairs(address, value, this);
-    console.log(pairs);
+		console.log(JSON.stringify(pairs, null, 2));
 	}
 }
 
@@ -110,12 +109,12 @@ function newNoMixerObject(): MixerObject {
 					);
 					channel.main = [
 						{
-							type: { _type: 'stripType', value: 'main' },
-							index: { _type: 'index', value: 1, max: 1 },
+							type: new MixerStripType('main'),
+							index: new MixerIndex(1),
 						},
 					];
-					(channel.pan = { _type: 'linear', value: 0, min: -100, max: 100 }),
-						ch.push(channel);
+					channel.pan = new MixerLinear(-100, 100, { default: 0 });
+					ch.push(channel);
 				}
 				return ch;
 			})(),
@@ -126,14 +125,10 @@ function newNoMixerObject(): MixerObject {
 				const dca: MixerDca[] = [];
 				for (let i = 0; i < dcaCount; i++) {
 					dca.push({
-						name: { _type: 'string', value: `DCA.${i + 1}` },
-						color: {
-							_type: 'enum',
-							value: colorEnum[i + channels],
-							enum: colorEnum,
-						},
-						mute: { _type: 'boolean', value: false },
-						level: { _type: 'level', value: '-oo', max: 10 },
+						name: new MixerString(`DCA.${i + 1}`),
+						color: new MixerEnum(colorEnum, colorEnum[i + channels]),
+						mute: new MixerBoolean(),
+						level: new MixerLevel(10),
 					});
 				}
 				return dca;
@@ -143,12 +138,15 @@ function newNoMixerObject(): MixerObject {
 				const layer: MixerLayer[] = [];
 				for (let i = 0; i < dcaCount; i++) {
 					layer.push({
-						name: { _type: 'string', value: `User.${i + 1}` },
+						name: new MixerString(`User.${i + 1}`),
 						assigned: (() => {
 							const assignedValue: MixerObject['groups']['layer'][number]['assigned'] =
 								[];
 							for (let j = 0; j < 2; j++) {
-								assignedValue.push({ on: { _type: 'boolean', value: false } });
+								assignedValue.push({
+									_key: new MixerKey('on'),
+									on: new MixerBoolean() as { _type: 'boolean'; value: false }, //Not sure the cleanest way to handle this keyed type
+								});
 							}
 							return assignedValue;
 						})(),
@@ -158,7 +156,7 @@ function newNoMixerObject(): MixerObject {
 			})(),
 		},
 		config: {
-			reset: { _type: 'boolean', value: false },
+			reset: new MixerBoolean(),
 		},
 	};
 	return rtn;
@@ -172,19 +170,19 @@ function vanillaStrip(
 ): MixerStrip {
 	color = color % colorEnum.length;
 	const rtn: MixerStrip = {
-		name: { _type: 'string', value: name },
-		icon: { _type: 'enum', value: icon, enum: Object.keys(iconEnum) },
-		color: { _type: 'enum', value: colorEnum[color], enum: colorEnum },
-		mute: { _type: 'boolean', value: true },
-		level: { _type: 'level', value: '-oo', max: 10 },
+		name: new MixerString(name),
+		icon: new MixerEnum(Object.keys(iconEnum), icon),
+		color: new MixerEnum(colorEnum, colorEnum[color]),
+		mute: new MixerBoolean(true),
+		level: new MixerLevel(10),
 		order: [
-			{ _type: 'enum', value: 'input', enum: ['input', 'fader'] },
-			{ _type: 'enum', value: 'fader', enum: ['input', 'fader'] },
+			new MixerEnum(['input', 'fader'], 'input'),
+			new MixerEnum(['input', 'fader'], 'fader'),
 		],
 		dca: (() => {
 			const dca: MixerBoolean[] = [];
 			for (let i = 0; i < dcaCount; i++) {
-				dca.push({ _type: 'boolean', value: false });
+				dca.push(new MixerBoolean());
 			}
 			return dca;
 		})(),
@@ -192,8 +190,8 @@ function vanillaStrip(
 	};
 	if (source)
 		rtn.source = {
-			type: { _type: 'enum', value: 'preamps', enum: ['preamps'] },
-			index: { _type: 'index', value: source, max: channels },
+			type: new MixerEnum(['preamps']),
+			index: new MixerIndex(channels, source),
 		};
 	return rtn;
 }

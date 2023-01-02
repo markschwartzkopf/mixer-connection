@@ -1,8 +1,6 @@
 import EventEmitter from 'events';
 import { X32 } from './x32/x32';
 import {
-	MixerLeaf,
-	MixerLeafError,
 	MixerModule,
 	MixerNode,
 	NodeObject,
@@ -13,6 +11,7 @@ import {
 	cloneMixerNode,
 	getValFromNode,
 } from './mixer-object-utils/mixer-object-utils';
+import { MixerLeaf, MixerLeafError } from './mixer-object-utils/leaf-types';
 
 type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
 
