@@ -107,7 +107,7 @@ export function getAddressValuePairs(
 	node?: MixerNode | MixerLeaf,
 	oAddress?: string[]
 ): {
-	keys?: string[][];
+	keys?: { address: string[]; value: string}[];
 	other: { address: string[]; value: string | number | boolean }[];
 } {
 	if (!node) node = module.mixerObject; //.groups.layer[0].assigned[0];
@@ -159,6 +159,21 @@ export function getAddressValuePairs(
 							return {other: []};
 						}
 						break;
+            case 'key':
+              if (typeof value === 'string' && node.enum.indexOf(value) !== -1) {
+                return { keys: [{ address: oAddress, value: value }], other: [] };
+              } else {
+                module.emit(
+                  'error',
+                  new Error(
+                    `Attempted to assign ${value} to key type leaf: ${oAddress.join(
+                      '/'
+                    )}. Possible values: ${node.enum.toString()}`
+                  )
+                );
+                return {other: []};
+              }
+              break;
 					case 'exponential':
 						if (typeof value === 'number') {
 							return { other: [{ address: oAddress, value: value }] };
@@ -253,17 +268,6 @@ export function getAddressValuePairs(
 							);
 							return {other: []};
 						}
-						break;
-					case 'key':
-						module.emit(
-							'error',
-							new Error(
-								`Attempted to assign value to readonly key type leaf: ${oAddress.join(
-									'/'
-								)}`
-							)
-						);
-						return {other: []};
 						break;
 					default:
 						module.emit(

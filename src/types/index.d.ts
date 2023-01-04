@@ -58,17 +58,17 @@ type MixerObject = {
 		muteGroup: MixerMuteGroup[];
 		layer: MixerLayer[];
 	};
-	fx?: { model: MixerEnum } & { [k: string]: MixerNode | MixerLeaf };
+	fx?: { model: MixerKey<string, string> } & { [k: string]: MixerNode | MixerLeaf };
 	config: MixerNode;
 	icons?: MixerIcons;
 };
 
 type MixerStrip = {
 	name?: MixerString;
-	color?: MixerEnum; //hex color string, enum
-	icon?: MixerEnum; //enum
+	color?: MixerEnum<string>; //hex color string, enum
+	icon?: MixerEnum<string>;
 	source?: {
-		type: MixerEnum; //enum
+		type: MixerEnum<string>;
 		index: MixerIndex;
 	};
 	delay?: {
@@ -100,7 +100,7 @@ type MixerStrip = {
 			};
 		};
 		bands?: {
-			type: MixerEnum;
+			type: MixerEnum<string>;
 			gain?: MixerLinear; //db
 			freq: MixerExponential; //Hz
 			q: MixerLinear; //q or slope
@@ -109,7 +109,7 @@ type MixerStrip = {
 	};
 	dyn1?: MixerDynamicsPlugin;
 	dyn2?: MixerDynamicsPlugin;
-	order: MixerEnum[]; //order of processing. Input is always first
+	order: MixerEnum<string>[]; //order of processing. Input is always first
 	ins1?: MixerNode;
 	ins2?: MixerNode;
 	send?: {
@@ -117,7 +117,7 @@ type MixerStrip = {
 		index: MixerIndex;
 		on: MixerBoolean;
 		level: MixerLevel; //db
-		tap: MixerEnum; //index of channel strip order that tap is after
+		tap: MixerEnum<string>; //index of channel strip order that tap is after
 		pan?: MixerLinear; //%
 		panFollow: MixerBoolean;
 	}[];
@@ -132,37 +132,23 @@ type MixerStrip = {
 };
 type MixerDca = {
 	name?: MixerString;
-	color?: MixerEnum; //hex color string, enum
-	icon?: MixerEnum; //enum
+	color?: MixerEnum<string>; //hex color string, enum
+	icon?: MixerEnum<string>; //enum
 	mute: MixerBoolean;
 	level: MixerLevel; //db
 };
 type MixerMuteGroup = {
 	name?: MixerString;
-	color?: MixerEnum; //hex color string, enum
-	icon?: MixerEnum; //enum
+	color?: MixerEnum<string>; //hex color string, enum
+	icon?: MixerEnum<string>; //enum
 	on: MixerBoolean;
 };
 type MixerLayer = {
 	name: MixerString;
-	assigned: ({
-		_key: MixerKey;
-	} & (
-		| {
-				on: {
-					_type: 'boolean';
-					value: true;
-				};
-				type: MixerStripType;
-				index: MixerIndex;
-		  }
-		| {
-				on: {
-					_type: 'boolean';
-					value: false;
-				};
-		  }
-	))[];
+	assigned: {
+		type: MixerStripType;
+		index: MixerIndex;
+	}[];
 };
 type MixerIcons = {
 	[k: string]: MixerString; //name: base64 image
@@ -173,69 +159,49 @@ type MixerNode =
 	| MixerNode[]
 	| MixerLeaf[];
 
-type MixerDynamicsPlugin = (
-	| {
-			type: {
-				_type: 'enum';
-				value: 'comp' | 'exp';
-				enum: MixerDynamicsPlugin['type']['value'][];
-			};
-			custom: MixerNode;
-			env: {
-				_type: 'enum';
-				value: 'lin' | 'log';
-				enum: ['lin', 'log'];
-			};
-			knee: MixerLinear;
-			mgain: MixerLinear; //db
-			thr: MixerExponential; //db
-			auto?: MixerBoolean;
-			att?: MixerLinear; //ms
-			hold?: MixerLinear; //ms
-			rel?: MixerLinear; //ms
-			ratio: MixerExponential;
-	  }
-	| {
-			type: {
-				_type: 'enum';
-				value: 'gate' | 'duck';
-				enum: MixerDynamicsPlugin['type']['value'][];
-			};
-			custom: MixerNode;
-			env: {
-				_type: 'enum';
-				value: 'lin' | 'log';
-				enum: ['lin', 'log'];
-			};
-			thr: MixerExponential; //db
-			auto?: MixerBoolean;
-			att?: MixerLinear; //ms
-			hold?: MixerLinear; //ms
-			rel?: MixerLinear; //ms
-			range: MixerLinear;
-	  }
-	| {
-			type: {
-				_type: 'enum';
-				value: 'other';
-				enum: MixerDynamicsPlugin['type']['value'][];
-			};
-			custom: MixerNode;
-	  }
-) & {
-	on: MixerBoolean;
+type MixerDynamicsPlugin = (MixerCompExp | MixerGateDuck | MixerOtherDyn) & MixerDynamicsCommon
+
+type MixerCompExp = {
+	type: MixerKey<Partial<'comp' | 'exp' | 'gate' | 'duck' | 'other'>, Partial<'comp' | 'exp'>>;
 	custom?: MixerNode;
+	env: MixerEnum<'lin' | 'log'>;
+	knee: MixerLinear;
+	mgain: MixerLinear; //db
+	thr: MixerExponential; //db
+	auto?: MixerBoolean;
+	att?: MixerLinear; //ms
+	hold?: MixerLinear; //ms
+	rel?: MixerLinear; //ms
+	ratio: MixerExponential;
+};
+
+type MixerGateDuck = {
+	type: MixerKey<Partial<'comp' | 'exp' | 'gate' | 'duck' | 'other'>, Partial<'gate' | 'duck'>>;
+	custom?: MixerNode;
+	env: MixerEnum<'lin' | 'log'>;
+	thr: MixerExponential; //db
+	auto?: MixerBoolean;
+	att?: MixerLinear; //ms
+	hold?: MixerLinear; //ms
+	rel?: MixerLinear; //ms
+	range: MixerLinear;
+};
+
+type MixerOtherDyn = {
+	type: MixerKey<Partial<'comp' | 'exp' | 'gate' | 'duck' | 'other'>, Partial<'other'>>;
+	model: MixerEnum<string>;
+	custom: MixerNode;
+};
+
+type MixerDynamicsCommon = {
+	on: MixerBoolean;
 	sideChain?: {
 		srcType: MixerStripType;
 		srcIndex: MixerIndex;
-		srcTap: MixerEnum;
+		srcTap: MixerEnum<string>;
 		filter?: {
 			on: MixerBoolean;
-			type: {
-				_type: 'enum';
-				value: 'bandpass' | 'lowpass' | 'highpass';
-				enum: ('bandpass' | 'lowpass' | 'highpass')[];
-			};
+			type: MixerEnum<'bandpass' | 'lowpass' | 'highpass'>;
 			freq: MixerExponential; //Hz
 			q?: MixerLinear; //q or slope
 		};

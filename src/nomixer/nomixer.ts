@@ -2,6 +2,7 @@ import EventEmitter from 'events';
 import {
 	MixerBoolean,
 	MixerEnum,
+	MixerExponential,
 	MixerIndex,
 	MixerKey,
 	MixerLevel,
@@ -144,8 +145,8 @@ function newNoMixerObject(): MixerObject {
 								[];
 							for (let j = 0; j < 2; j++) {
 								assignedValue.push({
-									_key: new MixerKey('on'),
-									on: new MixerBoolean() as { _type: 'boolean'; value: false }, //Not sure the cleanest way to handle this keyed type
+									type: new MixerStripType('off'),
+									index: new MixerIndex(channels),
 								});
 							}
 							return assignedValue;
@@ -179,6 +180,15 @@ function vanillaStrip(
 			new MixerEnum(['input', 'fader'], 'input'),
 			new MixerEnum(['input', 'fader'], 'fader'),
 		],
+		dyn1: {
+			type: new MixerKey<'comp' | 'gate', 'comp'>(['comp', 'gate'], 'comp'),
+			env: new MixerEnum<'log'>(['log']),
+			knee: new MixerLinear(1, 4),
+			mgain: new MixerLinear(0, 10),
+			thr: new MixerExponential(-60, 0),
+			ratio: new MixerExponential(1, 100),
+			on: new MixerBoolean(true),
+		},
 		dca: (() => {
 			const dca: MixerBoolean[] = [];
 			for (let i = 0; i < dcaCount; i++) {

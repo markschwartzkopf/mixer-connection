@@ -3,7 +3,8 @@ import { MixerObject } from '../types';
 export type MixerLeafError = { _type: 'error'; error: string };
 
 export type MixerLeaf =
-	| MixerEnum
+	| MixerEnum<string>
+  | MixerKey<string, string>
 	| MixerString
 	| MixerLevel
 	| MixerLinear
@@ -11,15 +12,25 @@ export type MixerLeaf =
 	| MixerIndex
 	| MixerBoolean
 	| MixerStripType
-  | MixerKey;
 
-export class MixerEnum {
+export class MixerEnum<T extends string> {
 	readonly _type = 'enum';
-	value: string; //default is first element of enum
-	readonly enum: string[];
-	constructor(values: string[], value?: string) {
+	value: T; //default is first element of enum
+	readonly enum: T[];
+	constructor(values: T[], value?: T) {
 		if (values.length === 0) {
-			values = [''];
+			console.error('MixerEnum must have at least one possible value');
+		}
+		this.enum = values;
+		this.value = value !== undefined ? value : values[0];
+	}
+}
+export class MixerKey<T extends string, S extends T> {
+	readonly _type = 'key';
+	readonly value: T; //Cannot be changed within this object. Must be changed by rebuilding the MixerKey's parent from scratch.
+	readonly enum: T[];
+	constructor(values: T[], value: S) {
+		if (values.length === 0) {
 			console.error('MixerEnum must have at least one possible value');
 		}
 		this.enum = values;
@@ -162,15 +173,8 @@ export class MixerBoolean {
 }
 export class MixerStripType {
 	readonly _type = 'stripType';
-	value: keyof MixerObject['strips'];
-	constructor(value?: keyof MixerObject['strips']) {
+	value: 'off' | keyof MixerObject['strips'];
+	constructor(value?: 'off' | keyof MixerObject['strips']) {
 		this.value = value ? value : 'ch';
-	}
-}
-export class MixerKey {
-	readonly _type = 'key';
-	value: string;
-	constructor(value: string) {
-		this.value = value;
 	}
 }
