@@ -1,19 +1,11 @@
 import EventEmitter from 'events';
-import { X32 } from './x32/x32';
 import {
+	MixerModel,
 	MixerModule,
-	MixerNode,
-	NodeObject,
-	NodeValue,
 } from './types';
 import { NoMixer } from './nomixer/nomixer';
-import {
-	cloneMixerNode,
-	getValFromNode,
-} from './mixer-object-utils/mixer-object-utils';
-import { MixerLeaf, MixerLeafError } from './mixer-object-utils/leaf-types';
-
-type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
+import { NoMixerTree } from './nomixer/nomixer-tree';
+import { MixerTree } from './proto-tree';
 
 interface MixerEvents {
 	error: (err: Error) => void;
@@ -41,23 +33,12 @@ class Mixer extends EventEmitter {
 		this.address = address;
 		this.model = model;
 		switch (model) {
-			case 'XM32':
-				this._module = new X32(address);
-				break;
-			case 'Wing':
-				this._module = new X32(address);
-				console.error('Code this mixer');
-				break;
-			case 'Xair':
-				this._module = new X32(address);
-				console.error('Code this mixer');
-				break;
 			case 'noMixer':
 				this._module = new NoMixer(address);
 				break;
 			default:
 				this.emit('error', new Error('Invalid mixer model: ' + model));
-				this._module = new X32(address);
+				this._module = new NoMixer(address);
 				console.error('switch this to noMixer');
 				break;
 		}
@@ -76,29 +57,18 @@ class Mixer extends EventEmitter {
 	}
 
 	close() {
-		this.emit('error', new Error('Code X32 closing'));
+		this.emit('error', new Error('Code mixer closing'));
 	}
 
 	get status() {
 		return this._module.status;
 	}
 
-	setValue(address: string[], value: NodeValue | NodeObject): void | string {
-		this._module.setValue(address, value);
-	}
-
-	getValue(
-		address: string[],
-		withMeta: 'withMeta'
-	): MixerLeaf | MixerNode | MixerLeafError;
-	getValue(address: string[]): NodeValue | NodeObject | null;
-	getValue(address: string[], withMeta?: 'withMeta') {
-		return withMeta
-			? cloneMixerNode(
-					getValFromNode(address, this._module.mixerObject, withMeta)
-			  )
-			: getValFromNode(address, this._module.mixerObject);
+	get dataTree(): tree<typeof this._module> {
+		return this._module.mixerTree.getTree;
 	}
 }
 
 export default Mixer;
+
+type tree<M extends MixerModule> = M extends NoMixer ? NoMixerTree : MixerTree;
