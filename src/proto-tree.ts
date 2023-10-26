@@ -1,7 +1,10 @@
-import { MetaNode, NodeChildren } from "./mixer-object-utils/mixer-object-types";
-import { MixerModel } from "./types";
+import {
+  MetaNode,
+  NodeChildren,
+} from './mixer-object-utils/mixer-object-types';
+import { MixerModel } from './types';
 
-export type MixerTree = NodeChildren<MixerRootNode>
+//export type MixerTree = NodeChildren<MixerRootNode>
 
 export class MixerRootNode extends MetaNode {
   readonly model: MixerModel;
@@ -9,127 +12,112 @@ export class MixerRootNode extends MetaNode {
   children = {
     config: new MixerConfigNode(),
   };
-	constructor(model: MixerModel) {
-		super();
-		this.model = model;
-	}
+  constructor(model: MixerModel) {
+    super();
+    this.model = model;
+  }
 
-	get getTree(): MixerTree {
+  get getTree(): MixerTree {
     return this.getObject;
   }
 }
 
 export class MixerConfigNode extends MetaNode {
-	readonly address = ['config'];
+  readonly address = ['config'];
 }
 
-/* function newNoMixerObject(): MixerObject {
-	const rtn: MixerObject = {
-		strips: {
-			ch: (() => {
-				const ch: MixerStrip[] = [];
-				for (let i = 0; i < channels; i++) {
-					const channel: MixerStrip = vanillaStrip(
-						`ch.${i + 1}`,
-						'channel',
-						i + 1,
-						i + 1
-					);
-					channel.main = [
-						{
-							type: new MixerStripType('main'),
-							index: new MixerIndex(1),
-						},
-					];
-					channel.pan = new MixerLinear(-100, 100, { default: 0 });
-					ch.push(channel);
-				}
-				return ch;
-			})(),
-			main: [vanillaStrip('LR', 'main', 0, 0)],
-		},
-		groups: {
-			dca: (() => {
-				const dca: MixerDca[] = [];
-				for (let i = 0; i < dcaCount; i++) {
-					dca.push({
-						name: new MixerString(`DCA.${i + 1}`),
-						color: new MixerEnum(colorEnum, colorEnum[i + channels]),
-						mute: new MixerBoolean(),
-						level: new MixerLevel(10),
-					});
-				}
-				return dca;
-			})(),
-			muteGroup: [],
-			layer: (() => {
-				const layer: MixerLayer[] = [];
-				for (let i = 0; i < dcaCount; i++) {
-					layer.push({
-						name: new MixerString(`User.${i + 1}`),
-						assigned: (() => {
-							const assignedValue: MixerObject['groups']['layer'][number]['assigned'] =
-								[];
-							for (let j = 0; j < 2; j++) {
-								assignedValue.push({
-									type: new MixerStripType('off'),
-									index: new MixerIndex(channels),
-								});
-							}
-							return assignedValue;
-						})(),
-					});
-				}
-				return layer;
-			})(),
-		},
-		config: {
-			reset: new MixerBoolean(),
-		},
-	};
-	return rtn;
-}
+const MixerStrip: TreeNode = {
+  name: 'string',
+  color: 'enum', //hex color string, enum
+  mute: 'boolean',
+  level: 'exponential', //db
+};
 
-function vanillaStrip(
-	name: string,
-	icon: keyof typeof iconEnum,
-	color: number,
-	source: number
-): MixerStrip {
-	color = color % colorEnum.length;
-	const rtn: MixerStrip = {
-		name: new MixerString(name),
-		icon: new MixerEnum(Object.keys(iconEnum), icon),
-		color: new MixerEnum(colorEnum, colorEnum[color]),
-		mute: new MixerBoolean(true),
-		level: new MixerLevel(10),
-		order: [
-			new MixerEnum(['input', 'fader'], 'input'),
-			new MixerEnum(['input', 'fader'], 'fader'),
-		],
-		dyn1: {
-			type: new MixerKey<'comp' | 'gate', 'comp'>(['comp', 'gate'], 'comp'),
-			env: new MixerEnum<'log'>(['log']),
-			knee: new MixerLinear(1, 4),
-			mgain: new MixerLinear(0, 10),
-			thr: new MixerExponential(-60, 0),
-			ratio: new MixerExponential(1, 100),
-			on: new MixerBoolean(true),
-		},
-		dca: (() => {
-			const dca: MixerBoolean[] = [];
-			for (let i = 0; i < dcaCount; i++) {
-				dca.push(new MixerBoolean());
-			}
-			return dca;
-		})(),
-		mutegroup: [],
-	};
-	if (source)
-		rtn.source = {
-			type: new MixerEnum(['preamps']),
-			index: new MixerIndex(channels, source),
-		};
-	return rtn;
-}
- */
+const MixerTree: TreeNode = {
+  strips: {
+    ch: [MixerStrip]
+  }
+};
+
+type TreeLeaf = 'string' | 'enum' | 'boolean' | 'exponential';
+type TreeNode = { [K: string]: TreeNode | TreeNode[] | TreeLeaf }; //Partial to allow optional properties in decendants
+type BasicType<T extends TreeLeaf> = T extends 'string'
+  ? string
+  : T extends 'enum'
+  ? string
+  : T extends 'boolean'
+  ? boolean
+  : T extends 'exponential'
+  ? number
+  : never;
+
+interface 
+
+
+
+//old
+/* type MixerObject = {
+  strips: {
+    ch: MixerStrip[];
+    aux?: MixerStrip[];
+    fxrtn?: MixerStrip[];
+    bus?: MixerStrip[];
+    matrix?: MixerStrip[];
+    main: MixerStrip[];
+  };
+  groups: {
+    dca: MixerDca[];
+    muteGroup: MixerMuteGroup[];
+    layer: MixerLayer[];
+  };
+  fx?: { model: MixerKey<string, string> } & {
+    [k: string]: MixerNode | MixerLeaf;
+  };
+  config: MixerNode;
+  icons?: MixerIcons;
+}; */
+
+/* type MixerStrip = {
+  name?: MixerString;
+  color?: MixerEnum<string>; //hex color string, enum
+  icon?: MixerEnum<string>;
+  source?: {
+    type: MixerEnum<string>;
+    index: MixerIndex;
+  };
+  delay?: {
+    time: MixerLinear; //ms
+    on?: MixerBoolean;
+  };
+  preamp?: {
+    gain?: MixerLinear; //db
+    trim?: MixerLinear; //db
+    invert?: MixerBoolean;
+  };
+  mute: MixerBoolean;
+  level: MixerLevel; //db
+  pan?: MixerLinear; //%
+  width?: MixerLinear; //%
+  custom?: MixerNode;
+  eq?: {
+    filters?: {
+      //dedicated filters
+      hp?: {
+        freq: MixerExponential; //Hz
+        slope: MixerLinear;
+        on: MixerBoolean;
+      };
+      lp?: {
+        freq: MixerExponential; //Hz
+        slope: MixerLinear;
+        on: MixerBoolean;
+      };
+    };
+    bands?: {
+      type: MixerEnum<string>;
+      gain?: MixerLinear; //db
+      freq: MixerExponential; //Hz
+      q: MixerLinear; //q or slope
+      on: MixerBoolean;
+    };
+  }; */
