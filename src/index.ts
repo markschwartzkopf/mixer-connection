@@ -1,11 +1,4 @@
 import EventEmitter from 'events';
-import {
-	MixerModel,
-	MixerModule,
-} from './types';
-import { NoMixer } from './nomixer/nomixer';
-import { NoMixerTree } from './nomixer/nomixer-tree';
-import { MixerTree } from './proto-tree';
 
 interface MixerEvents {
 	error: (err: Error) => void;
@@ -16,6 +9,7 @@ interface MixerEvents {
 
 interface Mixer {
 	on<U extends keyof MixerEvents>(event: U, listener: MixerEvents[U]): this;
+	off<U extends keyof MixerEvents>(event: U, listener: MixerEvents[U]): this;
 	once<U extends keyof MixerEvents>(event: U, listener: MixerEvents[U]): this;
 	emit<U extends keyof MixerEvents>(
 		event: U,
@@ -70,5 +64,3 @@ class Mixer extends EventEmitter {
 }
 
 export default Mixer;
-
-type tree<M extends MixerModule> = M extends NoMixer ? NoMixerTree : MixerTree;
