@@ -15,3 +15,11 @@ class CHILD_NODE_NAME implements MixerNode {
 	};
 	constructor(readonly parent: MixerNode) {}
 }
+
+class ARRAY_NODE_NAME implements MixerNode {
+	readonly type = 'node';
+	readonly children: MixerNode['children'] = {
+		/* CHILDREN */
+	};
+	constructor(readonly parent: MixerNode, readonly address: string[]) {}
+}

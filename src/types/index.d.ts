@@ -27,23 +27,22 @@ type MixerStatus = 'CONNECTED' | 'CONNECTING' | 'CLOSED';
 
 //This needs to work at some point:
 interface MixerNode {
-	readonly type: 'node';
-	readonly address: string[];
-	readonly parent: MixerNode | null;
-	readonly children: { [k: string]: MixerNode | MixerLeaf };
+  readonly type: 'node';
+  readonly address: string[];
+  readonly parent: MixerNode | null;
+  readonly children: { [k: string]: MixerNode | MixerLeaf };
 }
 
-type MixerLeaf = (MixerStringLeaf | MixerNumberLeaf) & {
-	get: () => string;
-	set: (val: string) => void;
-};
+type MixerLeaf = MixerStringLeaf | MixerNumberLeaf;
 
 interface MixerStringLeaf {
-	type: 'string';
-	definition: { default: string };
+  type: 'string';
+  definition: { default: string };
+  value: string;
 }
 
 interface MixerNumberLeaf {
-	type: 'number';
-	definition: { default: number };
+  type: 'number';
+  definition: { default: number };
+  value: number;
 }
