@@ -5,11 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "watch": "npm-run-all -p watch:*",
-    "watch:buildts": "node ./node_modules/typescript/bin/tsc -p ./build --diagnostics --watch",
+    "watch:buildts": "node ./node_modules/typescript/bin/tsc -p ./build/src --diagnostics --watch",
     "watch:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics --watch",
     "watch:copy-types": "onchange -i ./src -- npm-run-all -s build:copy*",
     "build": "npm-run-all -s build:*",
-    "build:buildts": "node ./node_modules/typescript/bin/tsc -p ./build --diagnostics",
+    "build:buildts": "node ./node_modules/typescript/bin/tsc -p ./build/src --diagnostics",
     "build:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics",
     "build:copy-types": "cpy . ../../dist/types/ --cwd=src/types --parents"
   },

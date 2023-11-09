@@ -1,8 +1,6 @@
-import { MixerRootNode } from '../proto-tree';
-
 type MixerModel = 'XM32' | 'Xair' | 'Wing' | 'noMixer';
 
-export interface MixerModule {
+/* export interface MixerModule {
 	close: () => void;
 	status: MixerStatus;
 	mixerTree: MixerRootNode;
@@ -23,32 +21,29 @@ interface ModuleEvents {
 }
 
 type NodeValue = string | number | boolean;
-type NodeObject = { [k: string]: NodeValue | NodeObject };
+type NodeObject = { [k: string]: NodeValue | NodeObject }; */
 
 type MixerStatus = 'CONNECTED' | 'CONNECTING' | 'CLOSED';
 
-type MixerDefNode = {
-	[k: string]: MixerDefNode | MixerDefLeaf | MixerDefArray;
+//This needs to work at some point:
+interface MixerNode {
+	readonly type: 'node';
+	readonly address: string[];
+	readonly parent: MixerNode | null;
+	readonly children: { [k: string]: MixerNode | MixerLeaf };
+}
+
+type MixerLeaf = (MixerStringLeaf | MixerNumberLeaf) & {
+	get: () => string;
+	set: (val: string) => void;
 };
 
-type MixerDefArray = {
-	_type: 'array';
-	start: number;
-	end: number;
-	indexDigits?: number;
-	items: MixerDefNode[string];
-};
+interface MixerStringLeaf {
+	type: 'string';
+	definition: { default: string };
+}
 
-type MixerDefLeaf = MixerDefLeafBoolean | MixerDefLeafEnum | MixerDefLeafNumber;
-
-type MixerDefLeafBoolean = { _type: 'boolean'; default: boolean };
-
-type MixerDefLeafEnum = { _type: 'enum'; values: string[]; default: number };
-
-type MixerDefLeafNumber = {
-	_type: 'number';
-	default: number;
-	min: number;
-	max: number;
-	tag?: 'exponential' | 'logarithmic' | 'integer';
-};
+interface MixerNumberLeaf {
+	type: 'number';
+	definition: { default: number };
+}
