@@ -1,0 +1,10 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"declaration": false,
+		"outDir": "../build",
+		"rootDir": ".",
+		"forceConsistentCasingInFileNames": true
+	},
+	"files": ["./types/index.d.ts", "./build/convert-mixer-defs.ts"]
+}

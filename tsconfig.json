@@ -8,7 +8,6 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "incremental": true,
     "esModuleInterop": true,
-    "typeRoots": ["node_modules/@types", "src/types"],
     "forceConsistentCasingInFileNames": true
   }
 }

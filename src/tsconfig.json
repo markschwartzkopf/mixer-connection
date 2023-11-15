@@ -4,5 +4,6 @@
     "outDir": "../dist",
     "rootDir": ".",
     "forceConsistentCasingInFileNames": true
-  }
+  },
+	"exclude": ["./build"]
 }

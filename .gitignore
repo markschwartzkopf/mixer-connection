@@ -1,4 +1,4 @@
 /node_modules
 .tsbuildinfo
-dist
-/build/compiled
+/dist
+/build
