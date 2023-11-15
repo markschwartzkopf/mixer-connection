@@ -1,3 +1,5 @@
+import { MixerDefNode } from '../../mixer-node-leaf';
+
 const someMixer: MixerDefNode = {
   channelStrips: {
     _type: 'array',

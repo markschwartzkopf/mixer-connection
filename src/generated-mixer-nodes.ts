@@ -2,7 +2,7 @@
 //DO NOT MODIFY IT BY HAND
 //Instead, modify the appropriate file in the src/build directory, and run the build script.
 
-import { MixerLeaf } from '../src/mixer-leaf';
+import { MixerLeaf, MixerNode, MixerDefLeafBoolean, MixerDefLeafEnum, MixerDefLeafNumber, MixerDefLeafString } from '../src/mixer-node-leaf';
 
 class SomeMixerChannelStrips_ITEM_Node implements MixerNode {
 	readonly type = 'node';

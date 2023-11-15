@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import { mixerRoots, MixerRoots } from './generated-mixer-nodes';
+import { mixerRoots, MixerRoots, MixerModel } from './generated-mixer-nodes';
 
 interface MixerEvents {
 	error: (err: Error) => void;
@@ -19,12 +19,12 @@ interface Mixer<T extends MixerModel> {
 }
 
 class Mixer<T extends MixerModel> extends EventEmitter {
-	//private _rootNode: MixerRoots[T];
+	private _rootNode: MixerRoots[T];
 	//private _module: MixerModule;
 
-	constructor(readonly address: string, readonly model: 'this' | 'that') {
+	constructor(readonly address: string, readonly model: T) {
 		super();
-		//this._rootNode = mixerRoots[model];
+		this._rootNode = mixerRoots[model];
 		/* switch (model) {
 			case 'someMixer':
 				this._rootNode = mixerRoots.someMixer;
@@ -51,9 +51,9 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	}
 
 	//this is testing code. Delete it later
-	/* get rootNode() {
+	get rootNode() {
 		return this._rootNode;
-	} */
+	}
 
 	close() {
 		this.emit('error', new Error('Code mixer closing'));

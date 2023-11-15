@@ -1,5 +1,6 @@
 import * as fsPromises from 'fs/promises';
 import mixers from './mixer-definitions/all-mixers';
+import { MixerDefNode, MixerDefArray, MixerDefLeaf } from '../mixer-node-leaf';
 const classNames: string[] = [];
 const nodes: string[] = [];
 const rootNodes: [string, string][] = [];
@@ -12,13 +13,20 @@ fsPromises
 		const [root, child, , warningIn] = val.toString().split('\r\n\r\n');
 		warning = warningIn;
 		const baseNodes = { root: root, child: child };
-		nodes.push(warning, `import { MixerLeaf } from '../src/mixer-leaf';`);
+		nodes.push(
+			warning,
+			`import { MixerLeaf, MixerNode, MixerDefLeafBoolean, MixerDefLeafEnum, MixerDefLeafNumber, MixerDefLeafString } from '../src/mixer-node-leaf';`
+		);
 		for (const [mixerName, def] of Object.entries(mixers)) {
 			mixerNames.push(mixerName);
 			rootNodes.push([mixerName, createNodes(def, mixerName, [], baseNodes)]);
 		}
 		nodes.push(`export type MixerModel = '${mixerNames.join(`' | '`)}';`);
-		nodes.push(`export const mixerRoots = {${rootNodes.map(x => `${x[0]}: new ${x[1]}()`).join(', ')}};`);
+		nodes.push(
+			`export const mixerRoots = {${rootNodes
+				.map((x) => `${x[0]}: new ${x[1]}()`)
+				.join(', ')}};`
+		);
 		nodes.push(`export type MixerRoots = typeof mixerRoots;`);
 		return fsPromises
 			.writeFile('./src/generated-mixer-nodes.ts', nodes.join('\r\n\r\n'))

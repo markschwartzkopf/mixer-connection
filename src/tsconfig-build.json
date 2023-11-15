@@ -6,5 +6,5 @@
 		"rootDir": ".",
 		"forceConsistentCasingInFileNames": true
 	},
-	"files": ["./types/index.d.ts", "./build/convert-mixer-defs.ts"]
+	"files": ["./build/convert-mixer-defs.ts"]
 }
