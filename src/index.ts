@@ -1,5 +1,11 @@
 import EventEmitter from 'events';
-import { mixerRoots, MixerRoots, MixerModel } from './generated-mixer-nodes';
+import {
+	mixerRoots,
+	MixerRoots,
+	MixerModel,
+	MixerTrees,
+} from './generated-mixer-nodes';
+import { getNodeValue } from './node-utils';
 
 interface MixerEvents {
 	error: (err: Error) => void;
@@ -51,8 +57,11 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	}
 
 	//this is testing code. Delete it later
-	get rootNode() {
+	/* get rootNode() {
 		return this._rootNode;
+	} */
+	get treeValue(): MixerTrees[T] {
+		return getNodeValue(this._rootNode) as unknown as MixerTrees[T];
 	}
 
 	close() {
@@ -62,10 +71,6 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	/* get status() {
 		return this._module.status;
 	} */
-
-
 }
 
 export default Mixer;
-
-export type MixerModel2 = MixerModel

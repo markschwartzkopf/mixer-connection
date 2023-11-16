@@ -25,3 +25,5 @@ class CHILD_NODE_NAME implements MixerNode {
 //This file was automatically generated
 //DO NOT MODIFY IT BY HAND
 //Instead, modify the appropriate file in the src/build directory, and run the build script.
+
+import { MixerNode } from '../../mixer-node-leaf';

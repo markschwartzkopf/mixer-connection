@@ -6,12 +6,12 @@
   "scripts": {
     "watch": "npm-run-all -p watch:*",
     "watch:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics --watch",
-		"watch:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics --watch",
-		"watch:generate-nodes": "onchange -d 5000 ./build -- npm run build:generate-nodes",
+    "watch:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics --watch",
+    "watch:generate-nodes": "onchange -d 5000 ./build -- npm run build:generate-nodes",
     "build": "npm-run-all -s build:*",
     "build:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics",
-		"build:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics",
-		"build:generate-nodes": "node ./build/build/convert-mixer-defs"
+    "build:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics",
+    "build:generate-nodes": "node ./build/build/convert-mixer-defs"
   },
   "repository": {
     "type": "git",
@@ -41,7 +41,7 @@
     "eslint": "^8.53.0",
     "npm-run-all": "^4.1.5",
     "onchange": "^7.1.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.2.2"
   },
   "overrides": {
     "semver": "^7.5.3"
