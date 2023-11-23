@@ -7,7 +7,7 @@ class ROOT_NODE_NAME implements MixerNode {
 		[k: string]: MixerNode['children'][string];
 	} = {
 		/* CHILDREN */
-	};
+	};	
 }
 
 class CHILD_NODE_NAME implements MixerNode {
@@ -17,7 +17,7 @@ class CHILD_NODE_NAME implements MixerNode {
 	} = {
 		/* CHILDREN */
 	};
-	constructor(readonly parent: MixerNode, readonly address: string[]) {}
+	constructor(readonly parent: MixerNode, readonly address: string[], readonly mixerNumber: string) {}
 }
 
 // Generated code message:
@@ -25,5 +25,7 @@ class CHILD_NODE_NAME implements MixerNode {
 //This file was automatically generated
 //DO NOT MODIFY IT BY HAND
 //Instead, modify the appropriate file in the src/build directory, and run the build script.
+
+//This and everything after this is ignored by node generator
 
 import { MixerNode } from '../../mixer-node-leaf';

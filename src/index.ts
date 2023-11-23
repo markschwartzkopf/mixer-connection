@@ -5,7 +5,28 @@ import {
 	MixerModel,
 	MixerTrees,
 } from './generated-mixer-nodes';
-import { getNodeValue } from './node-utils';
+import { getNodeValue } from './mixer-node-leaf';
+
+export interface MixerModule {
+	close: () => void;
+	status: MixerStatus;
+
+	on<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;
+	once<U extends keyof ModuleEvents>(event: U, listener: ModuleEvents[U]): this;
+	emit<U extends keyof ModuleEvents>(
+		event: U,
+		...args: Parameters<ModuleEvents[U]>
+	): boolean;
+}
+
+export type MixerStatus = 'CONNECTED' | 'CONNECTING' | 'CLOSED';
+
+interface ModuleEvents {
+	error: (err: Error) => void;
+	closed: () => void;
+	info: (info: string) => void;
+	connected: () => void;
+}
 
 interface MixerEvents {
 	error: (err: Error) => void;
@@ -57,12 +78,12 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	}
 
 	//this is testing code. Delete it later
-	/* get rootNode() {
+	get rootNode() {
 		return this._rootNode;
-	} */
-	get treeValue(): MixerTrees[T] {
-		return getNodeValue(this._rootNode) as unknown as MixerTrees[T];
 	}
+	/* get treeValue(): MixerTrees[T] {
+		return getNodeValue(this._rootNode) as unknown as MixerTrees[T];
+	} */
 
 	close() {
 		this.emit('error', new Error('Code mixer closing'));
@@ -74,3 +95,7 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 }
 
 export default Mixer;
+
+type RecursivePartial<T> = {
+	[P in keyof T]?: RecursivePartial<T[P]>;
+};
