@@ -1,11 +1,12 @@
-export class MixerLeaf<T extends MixerDefLeaf> {
-	private _value: T['default'];
-	readonly type: T['_type'];
-	readonly mixerAddress: string[];
+export class MixerLeaf {
+	private _value: MixerDefLeaf['default'];
+	readonly type: MixerDefLeaf['_type'];
+	readonly localAddress: string[];
 	constructor(
-		readonly definition: T,
-		readonly parent: MixerNode,
+		readonly definition: MixerDefLeaf,
 		readonly address: string[],
+		readonly parent: MixerNode,
+		nativeTreeTranslator: TreeTranslator,
 		readonly mixerNumber?: string
 	) {
 		this._value = definition.default;
@@ -13,7 +14,7 @@ export class MixerLeaf<T extends MixerDefLeaf> {
 		const processedAddress: string[] = [
 			mixerNumber ? mixerNumber : address[address.length - 1],
 		];
-		let node: MixerNode | MixerLeaf<MixerDefLeaf> | null = this;
+		let node: MixerNode | MixerLeaf | null = this;
 		while (node.parent) {
 			processedAddress.unshift(
 				node.mixerNumber
@@ -22,29 +23,102 @@ export class MixerLeaf<T extends MixerDefLeaf> {
 			);
 			node = node.parent;
 		}
-		this.mixerAddress = this.definition.mixerAddress.map((x) => {
+		this.localAddress = this.definition.localAddress.map((x) => {
 			if (typeof x === 'number') {
 				return processedAddress[x - 1];
 			} else return x;
 		});
+		nativeTreeTranslator.add(this.localAddress, this.address);
 	}
 	get value() {
 		return this._value;
 	}
-	set value(val: T['default']) {
+	set value(val: MixerDefLeaf['default']) {
 		this._value = val;
 	}
-	/* get addresses() {
-        return [[...this._address]]
-    } */
 }
 
-export interface MixerNode {
-	readonly type: 'node';
-	readonly mixerNumber?: string;
-	readonly address: string[];
-	readonly parent: MixerNode | null;
-	readonly children: { [k: string]: MixerNode | MixerLeaf<MixerDefLeaf> };
+export class MixerNode {
+	readonly type = 'node';
+	readonly children: { [k: string]: MixerNode | MixerLeaf };
+	readonly isArray: boolean;
+
+	constructor(
+		def: MixerDefNode | MixerDefArray,
+		readonly address: string[],
+		readonly parent: MixerNode | null,
+		nativeTreeTranslator: TreeTranslator,
+		readonly mixerNumber?: string
+	) {
+		if (def._type === 'array') {
+			const arrayDef = def as MixerDefArray;
+			this.isArray = true;
+			this.children = {};
+			let index = 0;
+			const indexDigits = arrayDef.indexDigits ? arrayDef.indexDigits : 0;
+			for (
+				let mixerIndex = arrayDef.start ? arrayDef.start : 1;
+				mixerIndex <= arrayDef.end;
+				mixerIndex++
+			) {
+				index++;
+				const prop = index.toString();
+				const childMixerNumber = mixerIndex
+					.toString()
+					.padStart(indexDigits, '0');
+				if (!arrayDef.items._type || arrayDef.items._type === 'array') {
+					this.children[prop] = new MixerNode(
+						arrayDef.items,
+						[...address, prop],
+						this,
+						nativeTreeTranslator,
+						childMixerNumber
+					);
+				} else {
+					this.children[prop] = new MixerLeaf(
+						arrayDef.items as MixerDefLeaf,
+						[...address, prop],
+						this,
+						nativeTreeTranslator,
+						childMixerNumber
+					);
+				}
+			}
+		} else {
+			this.isArray = false;
+			this.children = Object.fromEntries(
+				Object.entries(def as MixerDefNode).map(
+					([prop, definition]: [
+						string,
+						MixerDefNode | MixerDefLeaf | MixerDefArray
+					]) => {
+						if (!definition._type || definition._type === 'array') {
+							return [
+								prop,
+								new MixerNode(
+									definition,
+									[...address, prop],
+									this,
+									nativeTreeTranslator
+								),
+							];
+						} else {
+							const leafDef = definition as MixerDefLeaf;
+							return [
+								prop,
+								new MixerLeaf(
+									leafDef,
+									[...address, prop],
+									this,
+									nativeTreeTranslator
+								),
+							];
+						}
+					}
+				)
+			);
+		}
+	}
 }
 
 export type MixerDefNode = {
@@ -53,7 +127,7 @@ export type MixerDefNode = {
 
 export type MixerDefArray = {
 	_type: 'array';
-	start: number;
+	start?: number;
 	end: number;
 	indexDigits?: number;
 	items: MixerDefNode[string];
@@ -66,14 +140,14 @@ export type MixerDefLeaf =
 	| MixerDefLeafString;
 
 export type MixerDefLeafBoolean = {
-	mixerAddress: MixerAddress;
+	localAddress: LocalAddress;
 	mixerInfo?: any;
 	_type: 'boolean';
 	default: boolean;
 };
 
 export type MixerDefLeafString = {
-	mixerAddress: MixerAddress;
+	localAddress: LocalAddress;
 	mixerInfo?: any;
 	_type: 'string';
 	default: string;
@@ -81,7 +155,7 @@ export type MixerDefLeafString = {
 };
 
 export type MixerDefLeafEnum = {
-	mixerAddress: MixerAddress;
+	localAddress: LocalAddress;
 	mixerInfo?: any;
 	_type: 'enum';
 	values: string[];
@@ -89,7 +163,7 @@ export type MixerDefLeafEnum = {
 };
 
 export type MixerDefLeafNumber = {
-	mixerAddress: MixerAddress;
+	localAddress: LocalAddress;
 	mixerInfo?: any;
 	_type: 'number';
 	default: number;
@@ -98,87 +172,96 @@ export type MixerDefLeafNumber = {
 	tag?: 'exponential' | 'logarithmic' | 'integer';
 };
 
-export type LeafValue = MixerLeaf<MixerDefLeaf>['value'];
+export type LeafValue = MixerLeaf['value'];
 
 export function getNodeValue(node: MixerNode): ValueNode {
-	const rtn: ValueNode = {};
-	for (const prop in node.children)
-		rtn[prop] =
-			node.children[prop].type === 'node'
-				? getNodeValue(node.children[prop] as MixerNode)
-				: (node.children[prop] as MixerLeaf<MixerDefLeaf>).value;
+	let rtn: ValueNode = {};
+	if (node.isArray) {
+		rtn = [null];
+		for (const prop in node.children)
+			rtn[parseInt(prop)] =
+				node.children[prop].type === 'node'
+					? getNodeValue(node.children[prop] as MixerNode)
+					: (node.children[prop] as MixerLeaf).value;
+	} else
+		for (const prop in node.children)
+			rtn[prop] =
+				node.children[prop].type === 'node'
+					? getNodeValue(node.children[prop] as MixerNode)
+					: (node.children[prop] as MixerLeaf).value;
 	return rtn;
 }
 
-/* export function getValueAddressPairs(
-	node: MixerNode | MixerLeaf<MixerDefLeaf>,
-	val: ValueNode | LeafValue
-): [LeafValue, string[]][] | string {
-	const rtn: [LeafValue, string[]][] = [];
-	if (node.type === 'node') {
-		if (typeof val === 'object') {
-			for (const [prop, childVal] of Object.entries(val)) {
-				const child = node.children[prop];
-				if (child) {
-					const childPairs = getValueAddressPairs(child, childVal);
-					if (typeof childPairs === 'string') return childPairs;
-					rtn.push(...childPairs);
-				} else
-					return `Node /${[...node.address, prop].join('/')} does not exist`;
+export function getSettingAddressesAndValues(
+	node: MixerNode,
+	valueNode: ValueNode
+): string | [string[], LeafValue][] {
+	const rtn: [string[], LeafValue][] = [];
+	for (const [prop, val] of Object.entries(valueNode)) {
+		if (val !== null) {
+			const child = node.children[prop];
+			if (!child)
+				return `Incorrect value format for this tree, at address ${node.address.join(
+					'/'
+				)}`;
+			if (child.type === 'node') {
+				if (typeof val !== 'object')
+					return `Incorrect value format for this tree, at address ${node.address.join(
+						'/'
+					)}`;
+				const childAddresses = getSettingAddressesAndValues(child, val);
+				if (typeof childAddresses === 'string') return childAddresses;
+				rtn.push(...childAddresses);
+			} else {
+				if (typeof val === 'object')
+					return `Incorrect value format for this tree, at address ${node.address.join(
+						'/'
+					)}`;
+				rtn.push([child.localAddress, val]);
 			}
-		} else
-			return `Cannot assign primitive type to node /${node.address.join('/')}`;
-	} else {
-		if (typeof val !== 'object') {
-			const valType = typeof val;
-			switch (node.type) {
-				case 'boolean':
-					if (valType === 'boolean') {
-						return [[val, node.address]];
-					} else
-						return `Cannot assign ${valType} to ${
-							node.type
-						} node /${node.address.join('/')}`;
-					break;
-				case 'enum':
-					console.error('Enum not verified! Fix this code!');
-					if (valType === 'string') {
-						return [[val, node.address]];
-					} else
-						return `Cannot assign ${valType} to ${
-							node.type
-						} node /${node.address.join('/')}`;
-					break;
-				case 'string':
-					if (valType === 'string') {
-						return [[val, node.address]];
-					} else
-						return `Cannot assign ${valType} to ${
-							node.type
-						} node /${node.address.join('/')}`;
-					break;
-				case 'number':
-					if (valType === 'number') {
-						return [[val, node.address]];
-					} else
-						return `Cannot assign ${valType} to ${
-							node.type
-						} node /${node.address.join('/')}`;
-					break;
-				default:
-					return `Mixer leaf type ${
-						(node as MixerLeaf<MixerDefLeaf>).type
-					} cannot be assigned`;
-					break;
-			}
-		} else
-			return `Cannot assign node type to primitive /${node.address.join('/')}`;
+		}
 	}
 	return rtn;
-} */
+}
 
-export type ValueNode = {
-	[k: string]: ValueNode | LeafValue | [null, ...(ValueNode[] | LeafValue[])];
+export class TreeTranslator {
+	readonly tree: NativeTree = {};
+
+	add(nativeAddress: string[], localAddress: string[]) {
+		addToTree(this.tree, nativeAddress, localAddress);
+	}
+}
+
+function addToTree(
+	tree: NativeTree,
+	nativeAddress: string[],
+	localAddress: string[]
+) {
+	const currentProp = nativeAddress[0];
+	if (!tree[currentProp]) {
+		if (nativeAddress.length === 1) {
+			tree[currentProp] = localAddress;
+			return;
+		}
+		tree[currentProp] = {};
+	}
+	addToTree(
+		tree[currentProp] as NativeTree,
+		nativeAddress.slice(1),
+		localAddress
+	);
+}
+
+export type NativeTree = {
+	[k: string]: NativeTree | string[];
 };
 
-type MixerAddress = (string | number)[];
+export type ValueNode =
+	| {
+			[k: string]: ValueNode | LeafValue | ValueArray;
+	  }
+	| ValueArray;
+
+type ValueArray = [null, ...(ValueNode | LeafValue | ValueArray)[]];
+
+type LocalAddress = (string | number)[];

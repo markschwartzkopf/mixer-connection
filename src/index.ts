@@ -1,11 +1,13 @@
 import EventEmitter from 'events';
+import mixers from './mixer-definitions/all-mixers';
+import { MixerModel, MixerTrees } from './generated-mixer-types';
 import {
-	mixerRoots,
-	MixerRoots,
-	MixerModel,
-	MixerTrees,
-} from './generated-mixer-nodes';
-import { getNodeValue } from './mixer-node-leaf';
+	MixerNode,
+	TreeTranslator,
+	ValueNode,
+	getNodeValue,
+	getSettingAddressesAndValues,
+} from './mixer-node-leaf';
 
 export interface MixerModule {
 	close: () => void;
@@ -46,12 +48,14 @@ interface Mixer<T extends MixerModel> {
 }
 
 class Mixer<T extends MixerModel> extends EventEmitter {
-	private _rootNode: MixerRoots[T];
+	private _rootNode: MixerNode;
+	private _treeTranslator: TreeTranslator;
 	//private _module: MixerModule;
 
 	constructor(readonly address: string, readonly model: T) {
 		super();
-		this._rootNode = mixerRoots[model];
+		this._treeTranslator = new TreeTranslator();
+		this._rootNode = new MixerNode(mixers[model], [], null, this._treeTranslator);
 		/* switch (model) {
 			case 'someMixer':
 				this._rootNode = mixerRoots.someMixer;
@@ -81,9 +85,15 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	get rootNode() {
 		return this._rootNode;
 	}
-	/* get treeValue(): MixerTrees[T] {
+	get treeValue(): MixerTrees[T] {
 		return getNodeValue(this._rootNode) as unknown as MixerTrees[T];
-	} */
+	}
+	getAddr(val: ValueNode) {
+		return getSettingAddressesAndValues(this._rootNode, val);
+	}
+	get tree() {
+		return this._treeTranslator.tree;
+	}
 
 	close() {
 		this.emit('error', new Error('Code mixer closing'));
