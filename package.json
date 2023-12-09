@@ -7,11 +7,11 @@
     "watch": "npm-run-all -p watch:*",
     "watch:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics --watch",
     "watch:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics --watch",
-    "watch:generate-nodes": "onchange -d 5000 ./build -- npm run build:generate-nodes",
+    "watch:generate-types": "onchange -d 5000 ./build -- npm run build:generate-types",
     "build": "npm-run-all -s build:*",
     "build:ts": "node ./node_modules/typescript/bin/tsc -p ./src --diagnostics",
     "build:buildscript": "node ./node_modules/typescript/bin/tsc -p ./src/tsconfig-build.json --diagnostics",
-    "build:generate-nodes": "node ./build/build/convert-mixer-defs"
+    "build:generate-types": "node ./build/build/convert-mixer-defs"
   },
   "repository": {
     "type": "git",
