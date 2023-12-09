@@ -1,5 +1,5 @@
 import * as fsPromises from 'fs/promises';
-import mixers from '../mixer-definitions/all-mixers';
+import { mixerDefinitions } from '../mixer-definitions/all-mixers';
 import { MixerDefNode, MixerDefArray, MixerDefLeaf } from '../mixer-node-leaf';
 
 type ValType = 'string' | 'number' | 'boolean';
@@ -17,9 +17,9 @@ const warning = `// Generated code message:
 const blocks: string[] = [warning];
 const valTreeTypes: ValTreeType = {};
 const mixerNames: string[] = [];
-for (const mixerName of Object.keys(mixers)) {
+for (const mixerName of Object.keys(mixerDefinitions)) {
 	valTreeTypes[mixerName] = createType(
-		mixers[mixerName as keyof typeof mixers]
+		mixerDefinitions[mixerName as keyof typeof mixerDefinitions]
 	);
 	mixerNames.push(mixerName);
 }

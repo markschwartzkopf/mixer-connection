@@ -1,3 +1,4 @@
-import { someMixer } from './some-mixer';
+import { someMixer, SomeMixerEngine } from './some-mixer';
 
-export default { someMixer /* , someOtherMixer */ };
+export const mixerDefinitions = { someMixer /* , someOtherMixer */ };
+export const mixerEngines = { someMixer: SomeMixerEngine/* , someOtherMixer: SomeOtherMixerEngine */ };

@@ -1,6 +1,11 @@
-import { MixerDefNode } from '../mixer-node-leaf';
+import {
+	LeafValue,
+	MixerDefNode,
+	MixerEngine,
+	TreeTranslator,
+} from '../mixer-node-leaf';
 
-const someMixer: MixerDefNode = {
+export const someMixer: MixerDefNode = {
 	channelStrips: {
 		_type: 'array',
 		start: 0,
@@ -8,12 +13,12 @@ const someMixer: MixerDefNode = {
 		indexDigits: 2,
 		items: {
 			mute: {
-				localAddress: ['allMutesDumb', 'ch', 2, 'mute'],
+				nativeAddress: ['allMutesDumb', 'ch', 2, 'mute'],
 				_type: 'boolean',
 				default: false,
 			},
 			fader: {
-				localAddress: ['ch', 2, 'fader'],
+				nativeAddress: ['ch', 2, 'fader'],
 				_type: 'number',
 				min: -Infinity,
 				max: 10,
@@ -23,30 +28,34 @@ const someMixer: MixerDefNode = {
 				_type: 'array',
 				end: 2,
 				items: {
-					localAddress: ['_translate', 'ch', 2, 'dcas', 4],
+					nativeAddress: ['_translate', 'ch', 2, 'dcas', 4],
 					_type: 'boolean',
-					default: false
-				}
-			}
+					default: false,
+				},
+			},
 		},
 	},
 	config: {
 		name: {
-			localAddress: ['-config', 'name'],
+			nativeAddress: ['-config', 'name'],
 			_type: 'string',
 			default: 'Some Mixer',
 		},
 	},
 };
 
-/* const someMixer: MixerDefNode = {
-	channelStrips: {
-		'01': { _type: 'number', min: -Infinity, max: 10, default: -Infinity},
-		'02': { _type: 'number', min: -Infinity, max: 10, default: -Infinity},
-	},
-	config: {
-		name: { _type: 'string', default: 'Some Mixer' },
-	},
-}; */
-
-export { someMixer };
+export class SomeMixerEngine implements MixerEngine {
+	readonly nativeTreeTranslator: TreeTranslator;
+	constructor(
+		readonly ip: string,
+		private _processValuesFromEngine: (values: [string[], LeafValue][]) => void,
+		readonly error: (err: string) => void
+	) {
+		this.nativeTreeTranslator = new TreeTranslator(error);
+	}
+	setMixer(values: [string[], LeafValue][]) {
+		this._processValuesFromEngine(values.map((x) => {
+			return [this.nativeTreeTranslator.nativeAddressToLocal(x[0]), x[1]];
+		}));
+	}
+}

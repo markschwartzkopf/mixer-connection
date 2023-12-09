@@ -1,12 +1,24 @@
+import { inspect } from 'util';
+
 export class MixerLeaf {
 	private _value: MixerDefLeaf['default'];
 	readonly type: MixerDefLeaf['_type'];
-	readonly localAddress: string[];
+	readonly nativeAddress: string[];
+	/* state: LeafValue = new Proxy(this as any, {
+		get(target, prop) {
+			return target._value;
+		},
+		ownKeys(target) {
+			return [];
+		},
+	}); */
+
 	constructor(
 		readonly definition: MixerDefLeaf,
 		readonly address: string[],
 		readonly parent: MixerNode,
-		nativeTreeTranslator: TreeTranslator,
+		readonly mixerEngine: MixerEngine,
+		readonly error: (err: string) => void,
 		readonly mixerNumber?: string
 	) {
 		this._value = definition.default;
@@ -23,18 +35,121 @@ export class MixerLeaf {
 			);
 			node = node.parent;
 		}
-		this.localAddress = this.definition.localAddress.map((x) => {
+		this.nativeAddress = this.definition.nativeAddress.map((x) => {
 			if (typeof x === 'number') {
 				return processedAddress[x - 1];
 			} else return x;
 		});
-		nativeTreeTranslator.add(this.localAddress, this.address);
+		this.mixerEngine.nativeTreeTranslator.add(this.nativeAddress, this.address);
+		(this.parent.stateTree as any)[this.address.slice(-1)[0]] =
+			definition.default; //typescript gymnastics because NodeArrays exist
 	}
-	get value() {
+	get state() {
 		return this._value;
 	}
-	set value(val: MixerDefLeaf['default']) {
-		this._value = val;
+	set state(val: LeafValue) {
+		this.mixerEngine.setMixer(this.getSettingAddressesAndValues(val));
+	}
+
+	update(address: string[], val: LeafValue) {
+		if (address.length !== 0) {
+			this.error(
+				`Bad address for update from mixer, encountered at node ${this.address.join(
+					'/'
+				)}`
+			);
+			return;
+		}
+		const newVal = this._valueValid(val);
+		if (newVal !== null) this._value = val;
+		(this.parent.stateTree as any)[this.address.slice(-1)[0]] = val; //typescript gymnastics because NodeArrays exist
+	}
+
+	private _valueValid(val: NodeValue | LeafValue) {
+		if (typeof val === 'object') {
+			this.error(
+				`Cannot set leaf ${this.address.join('/')} to leaf node value`
+			);
+			return null;
+		}
+		switch (this.definition._type) {
+			case 'boolean':
+				if (typeof val !== 'boolean') {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to ${typeof val} value`
+					);
+					return null;
+				}
+				break;
+			case 'enum':
+				if (typeof val !== 'string') {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to ${typeof val} value`
+					);
+					return null;
+				}
+				if (!this.definition.values.includes(val)) {
+					this.error(
+						`Cannot set enum leaf ${this.address.join('/')} to ${val}`
+					);
+					return null;
+				}
+				break;
+			case 'number':
+				if (typeof val !== 'number') {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to ${typeof val} value`
+					);
+					return null;
+				}
+				if (val > this.definition.max) {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to value larger than ${
+							this.definition.max
+						}`
+					);
+					return null;
+				}
+				if (val < this.definition.min) {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to value smaller than ${
+							this.definition.min
+						}`
+					);
+					return null;
+				}
+				break;
+			case 'string':
+				if (typeof val !== 'string') {
+					this.error(
+						`Cannot set leaf ${this.address.join('/')} to ${typeof val} value`
+					);
+					return null;
+				}
+				if (
+					this.definition.maxLength &&
+					val.length > this.definition.maxLength
+				) {
+					const oldVal = val;
+					val = val.slice(0, this.definition.maxLength);
+					this.error(
+						`Lead ${this.address.join('/')} has a max length of ${
+							this.definition.maxLength
+						}. Truncating ${oldVal} to ${val}`
+					);
+				}
+				break;
+		}
+		return val;
+	}
+
+	getSettingAddressesAndValues(
+		nodeValue: NodeValue | LeafValue
+	): [string[], LeafValue][] {
+		const val = this._valueValid(nodeValue);
+		if (val !== null) {
+			return [[this.nativeAddress, val]];
+		} else return [];
 	}
 }
 
@@ -42,12 +157,15 @@ export class MixerNode {
 	readonly type = 'node';
 	readonly children: { [k: string]: MixerNode | MixerLeaf };
 	readonly isArray: boolean;
+	readonly _stateProxy: NodeValue;
 
 	constructor(
 		def: MixerDefNode | MixerDefArray,
 		readonly address: string[],
 		readonly parent: MixerNode | null,
-		nativeTreeTranslator: TreeTranslator,
+		readonly stateTree: NodeValue,
+		readonly mixerEngine: MixerEngine,
+		readonly error: (err: string) => void,
 		readonly mixerNumber?: string
 	) {
 		if (def._type === 'array') {
@@ -67,11 +185,16 @@ export class MixerNode {
 					.toString()
 					.padStart(indexDigits, '0');
 				if (!arrayDef.items._type || arrayDef.items._type === 'array') {
+					const newStateTreeNode: NodeValue =
+						arrayDef.items._type === 'array' ? [null] : {};
+					(this.stateTree as ArrayValue).push(newStateTreeNode);
 					this.children[prop] = new MixerNode(
 						arrayDef.items,
 						[...address, prop],
 						this,
-						nativeTreeTranslator,
+						newStateTreeNode,
+						mixerEngine,
+						error,
 						childMixerNumber
 					);
 				} else {
@@ -79,7 +202,8 @@ export class MixerNode {
 						arrayDef.items as MixerDefLeaf,
 						[...address, prop],
 						this,
-						nativeTreeTranslator,
+						mixerEngine,
+						error,
 						childMixerNumber
 					);
 				}
@@ -93,13 +217,18 @@ export class MixerNode {
 						MixerDefNode | MixerDefLeaf | MixerDefArray
 					]) => {
 						if (!definition._type || definition._type === 'array') {
+							const newStateTreeNode: NodeValue =
+								definition._type === 'array' ? [null] : {};
+							(this.stateTree as any)[prop] = newStateTreeNode;
 							return [
 								prop,
 								new MixerNode(
 									definition,
 									[...address, prop],
 									this,
-									nativeTreeTranslator
+									newStateTreeNode,
+									mixerEngine,
+									error
 								),
 							];
 						} else {
@@ -110,7 +239,8 @@ export class MixerNode {
 									leafDef,
 									[...address, prop],
 									this,
-									nativeTreeTranslator
+									mixerEngine,
+									error
 								),
 							];
 						}
@@ -118,6 +248,90 @@ export class MixerNode {
 				)
 			);
 		}
+		const self = this;
+		this._stateProxy = new Proxy(this.stateTree, {
+			get(target, prop) {
+				if (prop === 'toJSON') return {};
+				if (typeof prop !== 'string' || !self.children[prop]) {
+					if (typeof prop === 'string' && prop in target)
+						return (target as any)[prop];
+					self.error(
+						`Property ${String(
+							prop
+						)} does not exist on node ${self.address.join('/')}`
+					);
+					return {};
+				}
+				return self.children[prop].state;
+			},
+			set(target, prop, val) {
+				if (typeof prop !== 'string' || !self.children[prop]) {
+					self.error(
+						`Property ${String(
+							prop
+						)} does not exist on node ${self.address.join('/')}`
+					);
+					return true;
+				}
+				self.children[prop].state = val;
+				return true;
+			},
+			ownKeys() {
+				return Object.keys(self.children);
+			},
+			getOwnPropertyDescriptor() {
+				return {
+					enumerable: true,
+					configurable: true,
+				};
+			},
+		});
+	}
+	
+	get state() {
+		return this._stateProxy;
+	}
+	set state(val: NodeValue) {
+		const test = this.getSettingAddressesAndValues(val);
+		//FAILS after this point
+		this.mixerEngine.setMixer(test);
+		//this.mixerEngine.setMixer(this.getSettingAddressesAndValues(val));
+	}
+
+	update(address: string[], val: LeafValue) {
+		const prop = address[0];
+		if (prop !== undefined && this.children[prop]) {
+			this.children[prop].update(address.slice(1), val);
+		} else {
+			this.error(
+				`Bad address for update from mixer, encountered at node ${this.address.join(
+					'/'
+				)}`
+			);
+		}
+	}
+
+	getSettingAddressesAndValues(
+		nodeValue: NodeValue | LeafValue
+	): [string[], LeafValue][] {
+		if (typeof nodeValue !== 'object') {
+			this.error(
+				`Cannot set node ${this.address.join(
+					'/'
+				)} to leaf type value ${nodeValue}`
+			);
+			return [];
+		}
+		const rtn: [string[], LeafValue][] = [];
+		for (const [prop, val] of Object.entries(nodeValue)) {
+			if (val !== null) {
+				const child = this.children[prop];
+				if (!child) {
+					this.error(`Node ${this.address.join('/')} has no child "${prop}"`);
+				} else rtn.push(...child.getSettingAddressesAndValues(val));
+			}
+		}
+		return rtn;
 	}
 }
 
@@ -140,14 +354,14 @@ export type MixerDefLeaf =
 	| MixerDefLeafString;
 
 export type MixerDefLeafBoolean = {
-	localAddress: LocalAddress;
+	nativeAddress: NativeAddress;
 	mixerInfo?: any;
 	_type: 'boolean';
 	default: boolean;
 };
 
 export type MixerDefLeafString = {
-	localAddress: LocalAddress;
+	nativeAddress: NativeAddress;
 	mixerInfo?: any;
 	_type: 'string';
 	default: string;
@@ -155,7 +369,7 @@ export type MixerDefLeafString = {
 };
 
 export type MixerDefLeafEnum = {
-	localAddress: LocalAddress;
+	nativeAddress: NativeAddress;
 	mixerInfo?: any;
 	_type: 'enum';
 	values: string[];
@@ -163,7 +377,7 @@ export type MixerDefLeafEnum = {
 };
 
 export type MixerDefLeafNumber = {
-	localAddress: LocalAddress;
+	nativeAddress: NativeAddress;
 	mixerInfo?: any;
 	_type: 'number';
 	default: number;
@@ -172,63 +386,41 @@ export type MixerDefLeafNumber = {
 	tag?: 'exponential' | 'logarithmic' | 'integer';
 };
 
-export type LeafValue = MixerLeaf['value'];
-
-export function getNodeValue(node: MixerNode): ValueNode {
-	let rtn: ValueNode = {};
-	if (node.isArray) {
-		rtn = [null];
-		for (const prop in node.children)
-			rtn[parseInt(prop)] =
-				node.children[prop].type === 'node'
-					? getNodeValue(node.children[prop] as MixerNode)
-					: (node.children[prop] as MixerLeaf).value;
-	} else
-		for (const prop in node.children)
-			rtn[prop] =
-				node.children[prop].type === 'node'
-					? getNodeValue(node.children[prop] as MixerNode)
-					: (node.children[prop] as MixerLeaf).value;
-	return rtn;
-}
-
-export function getSettingAddressesAndValues(
-	node: MixerNode,
-	valueNode: ValueNode
-): string | [string[], LeafValue][] {
-	const rtn: [string[], LeafValue][] = [];
-	for (const [prop, val] of Object.entries(valueNode)) {
-		if (val !== null) {
-			const child = node.children[prop];
-			if (!child)
-				return `Incorrect value format for this tree, at address ${node.address.join(
-					'/'
-				)}`;
-			if (child.type === 'node') {
-				if (typeof val !== 'object')
-					return `Incorrect value format for this tree, at address ${node.address.join(
-						'/'
-					)}`;
-				const childAddresses = getSettingAddressesAndValues(child, val);
-				if (typeof childAddresses === 'string') return childAddresses;
-				rtn.push(...childAddresses);
-			} else {
-				if (typeof val === 'object')
-					return `Incorrect value format for this tree, at address ${node.address.join(
-						'/'
-					)}`;
-				rtn.push([child.localAddress, val]);
-			}
-		}
-	}
-	return rtn;
-}
+export type LeafValue = MixerLeaf['_value'];
 
 export class TreeTranslator {
 	readonly tree: NativeTree = {};
 
+	constructor(readonly error: (err: string) => void) {}
+
 	add(nativeAddress: string[], localAddress: string[]) {
 		addToTree(this.tree, nativeAddress, localAddress);
+	}
+
+	nativeAddressToLocal(nativeAddress: string[]): string[] {
+		let tree: NativeTree | string[] = this.tree;
+		const workingAddress = [...nativeAddress];
+		while (workingAddress.length > 1) {
+			const prop = workingAddress.shift();
+			if (prop && !Array.isArray(tree) && tree[prop]) {
+				tree = tree[prop];
+			} else {
+				this.error(`Unknown native mixer address ${nativeAddress.join('/')}`);
+				return ['MISSING_ADDRESS'];
+			}
+		}
+		if (nativeAddress.length < 1) {
+			this.error('Cannot convert empty native address to local address');
+			return ['MISSING_ADDRESS'];
+		}
+		if (Array.isArray(tree)) {
+			this.error(`Unknown native mixer address ${nativeAddress.join('/')}`);
+			return ['MISSING_ADDRESS'];
+		}
+		const localAddress = tree[workingAddress[0]];
+		if (Array.isArray(localAddress)) {
+			return localAddress;
+		} else return ['MISSING_ADDRESS'];
 	}
 }
 
@@ -256,12 +448,18 @@ export type NativeTree = {
 	[k: string]: NativeTree | string[];
 };
 
-export type ValueNode =
+export type NodeValue =
 	| {
-			[k: string]: ValueNode | LeafValue | ValueArray;
+			[k: string]: NodeValue | LeafValue | ArrayValue;
 	  }
-	| ValueArray;
+	| ArrayValue;
 
-type ValueArray = [null, ...(ValueNode | LeafValue | ValueArray)[]];
+type ArrayValue = [null, ...(NodeValue | LeafValue | ArrayValue)[]];
 
-type LocalAddress = (string | number)[];
+type NativeAddress = (string | number)[];
+
+export interface MixerEngine {
+	setMixer: (values: [string[], LeafValue][]) => void;
+	error: (err: string) => void;
+	nativeTreeTranslator: TreeTranslator;
+}
