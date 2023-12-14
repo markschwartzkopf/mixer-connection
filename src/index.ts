@@ -1,11 +1,7 @@
 import EventEmitter from 'events';
 import { mixerDefinitions, mixerEngines } from './mixer-definitions/all-mixers';
 import { MixerModel, MixerTrees } from './generated-mixer-types';
-import {
-	LeafValue,
-	MixerEngine,
-	MixerNode
-} from './mixer-node-leaf';
+import { LeafValue, MixerEngine, MixerNode } from './mixer-node-leaf';
 
 export interface MixerModule {
 	close: () => void;
@@ -56,29 +52,27 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 		const error = (err: string) => {
 			self.emit('error', new Error(err));
 		};
-		const processValuesFromEngine = (values: [string[], LeafValue][]) => {
+		const updateValues = (values: [string[][], LeafValue][]) => {
 			values.forEach((val) => {
-				self._rootNode.update(val[0], val[1]);
+				val[0].forEach((address) => {
+					self._rootNode.update(address, val[1]);
+				});
 			});
 		};
+		//add update frequency?
 		switch (model) {
-			case 'someMixer':
-				this._mixerEngine = new mixerEngines[model](
-					'',
-					processValuesFromEngine,
-					error
-				);
+			case 'noMixer':
+				this._mixerEngine = new mixerEngines[model]('', updateValues);
 				break;
 			default:
 				this.emit('error', new Error('Invalid mixer model: ' + model));
 				console.error('switch this to noMixer');
-				this._mixerEngine = new mixerEngines['someMixer'](
-					'',
-					processValuesFromEngine,
-					error
-				);
+				this._mixerEngine = new mixerEngines['noMixer']('', updateValues);
 				break;
 		}
+		this._mixerEngine.on('error', (err) => {
+			error(err);
+		});
 		this._rootNode = new MixerNode(
 			mixerDefinitions[model],
 			[],
@@ -128,12 +122,6 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	/* get status() {
 		return this._module.status;
 	} */
-
-	private _processValuesFromEngine(values: [string[], LeafValue][]) {
-		values.forEach((val) => {
-			this._rootNode.update(val[0], val[1]);
-		});
-	}
 }
 
 export default Mixer;

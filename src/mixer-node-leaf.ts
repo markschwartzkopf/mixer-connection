@@ -1,9 +1,9 @@
-import { inspect } from 'util';
+import * as dgram from 'dgram';
 
 export class MixerLeaf {
 	private _value: MixerDefLeaf['default'];
 	readonly type: MixerDefLeaf['_type'];
-	readonly nativeAddress: string[];
+	readonly nativeAddresses: string[][];
 	/* state: LeafValue = new Proxy(this as any, {
 		get(target, prop) {
 			return target._value;
@@ -35,12 +35,17 @@ export class MixerLeaf {
 			);
 			node = node.parent;
 		}
-		this.nativeAddress = this.definition.nativeAddress.map((x) => {
-			if (typeof x === 'number') {
-				return processedAddress[x - 1];
-			} else return x;
+		this.nativeAddresses = this.definition.nativeAddresses.map((address) => {
+			return address.map((x) => {
+				if (typeof x === 'number') {
+					return processedAddress[x - 1];
+				} else return x;
+			});
 		});
-		this.mixerEngine.nativeTreeTranslator.add(this.nativeAddress, this.address);
+		this.mixerEngine.nativeTreeTranslator.add(
+			this.nativeAddresses,
+			this.address
+		);
 		(this.parent.stateTree as any)[this.address.slice(-1)[0]] =
 			definition.default; //typescript gymnastics because NodeArrays exist
 	}
@@ -148,7 +153,9 @@ export class MixerLeaf {
 	): [string[], LeafValue][] {
 		const val = this._valueValid(nodeValue);
 		if (val !== null) {
-			return [[this.nativeAddress, val]];
+			return this.nativeAddresses.map((address) => {
+				return [address, val];
+			});
 		} else return [];
 	}
 }
@@ -287,7 +294,7 @@ export class MixerNode {
 			},
 		});
 	}
-	
+
 	get state() {
 		return this._stateProxy;
 	}
@@ -335,9 +342,9 @@ export class MixerNode {
 	}
 }
 
-export type MixerDefNode = {
-	[k: string]: MixerDefNode | MixerDefLeaf | MixerDefArray;
-};
+export interface MixerDefNode {
+	[k: string]: MixerDefNode | MixerDefLeaf | MixerDefArray | never;
+}
 
 export type MixerDefArray = {
 	_type: 'array';
@@ -354,14 +361,14 @@ export type MixerDefLeaf =
 	| MixerDefLeafString;
 
 export type MixerDefLeafBoolean = {
-	nativeAddress: NativeAddress;
+	nativeAddresses: NativeAddresses;
 	mixerInfo?: any;
 	_type: 'boolean';
 	default: boolean;
 };
 
 export type MixerDefLeafString = {
-	nativeAddress: NativeAddress;
+	nativeAddresses: NativeAddresses;
 	mixerInfo?: any;
 	_type: 'string';
 	default: string;
@@ -369,15 +376,15 @@ export type MixerDefLeafString = {
 };
 
 export type MixerDefLeafEnum = {
-	nativeAddress: NativeAddress;
+	nativeAddresses: NativeAddresses;
 	mixerInfo?: any;
 	_type: 'enum';
 	values: string[];
-	default: number;
+	default: string;
 };
 
 export type MixerDefLeafNumber = {
-	nativeAddress: NativeAddress;
+	nativeAddresses: NativeAddresses;
 	mixerInfo?: any;
 	_type: 'number';
 	default: number;
@@ -393,12 +400,12 @@ export class TreeTranslator {
 
 	constructor(readonly error: (err: string) => void) {}
 
-	add(nativeAddress: string[], localAddress: string[]) {
-		addToTree(this.tree, nativeAddress, localAddress);
+	add(nativeAddresses: string[][], localAddress: string[]) {
+		addToTree(this.tree, nativeAddresses, localAddress, this.error);
 	}
 
-	nativeAddressToLocal(nativeAddress: string[]): string[] {
-		let tree: NativeTree | string[] = this.tree;
+	nativeAddressToLocal(nativeAddress: string[]): string[][] {
+		let tree: NativeTree | string[][] = this.tree;
 		const workingAddress = [...nativeAddress];
 		while (workingAddress.length > 1) {
 			const prop = workingAddress.shift();
@@ -406,46 +413,57 @@ export class TreeTranslator {
 				tree = tree[prop];
 			} else {
 				this.error(`Unknown native mixer address ${nativeAddress.join('/')}`);
-				return ['MISSING_ADDRESS'];
+				return [['MISSING_ADDRESS']];
 			}
 		}
 		if (nativeAddress.length < 1) {
 			this.error('Cannot convert empty native address to local address');
-			return ['MISSING_ADDRESS'];
+			return [['MISSING_ADDRESS']];
 		}
 		if (Array.isArray(tree)) {
 			this.error(`Unknown native mixer address ${nativeAddress.join('/')}`);
-			return ['MISSING_ADDRESS'];
+			return [['MISSING_ADDRESS']];
 		}
-		const localAddress = tree[workingAddress[0]];
-		if (Array.isArray(localAddress)) {
-			return localAddress;
-		} else return ['MISSING_ADDRESS'];
+		const localAddresses = tree[workingAddress[0]];
+		if (Array.isArray(localAddresses)) {
+			return localAddresses;
+		} else return [['MISSING_ADDRESS']];
 	}
 }
 
 function addToTree(
 	tree: NativeTree,
-	nativeAddress: string[],
-	localAddress: string[]
+	nativeAddresses: string[][],
+	localAddress: string[],
+	error: (err: string) => void
 ) {
-	const currentProp = nativeAddress[0];
-	if (!tree[currentProp]) {
+	nativeAddresses.forEach((nativeAddress) => {
+		const currentProp = nativeAddress[0];
+		if (!tree[currentProp]) {
+			if (nativeAddress.length === 1) {
+				tree[currentProp] = [localAddress];
+				return;
+			}
+			tree[currentProp] = {};
+		}
 		if (nativeAddress.length === 1) {
-			tree[currentProp] = localAddress;
+			const addressList = tree[currentProp];
+			if (Array.isArray(addressList)) {
+				addressList.push(localAddress);
+			} else error(`Error: ${currentProp} is both a node and a leaf`);
 			return;
 		}
-		tree[currentProp] = {};
-	}
-	addToTree(
-		tree[currentProp] as NativeTree,
-		nativeAddress.slice(1),
-		localAddress
-	);
+		addToTree(
+			tree[currentProp] as NativeTree,
+			[nativeAddress.slice(1)],
+			localAddress,
+			error
+		);
+	});
 }
 
 export type NativeTree = {
-	[k: string]: NativeTree | string[];
+	[k: string]: NativeTree | string[][];
 };
 
 export type NodeValue =
@@ -456,10 +474,20 @@ export type NodeValue =
 
 type ArrayValue = [null, ...(NodeValue | LeafValue | ArrayValue)[]];
 
-type NativeAddress = (string | number)[];
+type NativeAddresses = (string | number)[][];
+
+export interface mixerEvents {
+	error: (err: string) => void;
+	closed: () => void;
+	info: (info: string) => void;
+	connected: () => void;
+}
 
 export interface MixerEngine {
+	on<U extends keyof mixerEvents>(event: U, listener: mixerEvents[U]): this;
+	once<U extends keyof mixerEvents>(event: U, listener: mixerEvents[U]): this;
+	off<U extends keyof mixerEvents>(event: U, listener: mixerEvents[U]): this;
+	emit<U extends keyof mixerEvents>(event: U, ...args: Parameters<mixerEvents[U]>): boolean;
 	setMixer: (values: [string[], LeafValue][]) => void;
-	error: (err: string) => void;
 	nativeTreeTranslator: TreeTranslator;
 }
