@@ -45,7 +45,7 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	private _rootNode: MixerNode;
 	private _mixerEngine: MixerEngine;
 
-	constructor(readonly address: string, readonly model: T) {
+	constructor(readonly ip: string, readonly model: T) {
 		super();
 		//bullshit to prevent JS 'this' scope issues
 		const self = this;
@@ -62,7 +62,10 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 		//add update frequency?
 		switch (model) {
 			case 'noMixer':
-				this._mixerEngine = new mixerEngines[model]('', updateValues);
+				this._mixerEngine = new mixerEngines[model](ip, updateValues);
+				break;
+			case 'x32':
+				this._mixerEngine = new mixerEngines[model](ip, updateValues);
 				break;
 			default:
 				this.emit('error', new Error('Invalid mixer model: ' + model));
@@ -72,6 +75,15 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 		}
 		this._mixerEngine.on('error', (err) => {
 			error(err);
+		});
+		this._mixerEngine.on('info', (info) => {
+			this.emit('info', info);
+		});
+		this._mixerEngine.on('closed', () => {
+			this.emit('closed');
+		});
+		this._mixerEngine.on('connected', () => {
+			this.emit('connected');
 		});
 		this._rootNode = new MixerNode(
 			mixerDefinitions[model],
@@ -99,9 +111,6 @@ class Mixer<T extends MixerModel> extends EventEmitter {
 	get rootNode() {
 		return this._rootNode;
 	}
-	/* get treeValue(): MixerTrees[T] {
-		return getNodeValue(this._rootNode) as unknown as MixerTrees[T];
-	} */
 	get state() {
 		return this._rootNode.state as MixerTrees[T];
 	}

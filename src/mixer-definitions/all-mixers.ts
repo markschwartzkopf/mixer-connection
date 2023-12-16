@@ -7,10 +7,11 @@ import {
 	MixerDefNode,
 } from '../mixer-node-leaf';
 import { noMixer, NoMixerEngine } from './no-mixer';
+import { x32, X32Engine } from './x32';
 
-export const mixerDefinitions = { noMixer /* , someOtherMixer */ };
+export const mixerDefinitions = { noMixer, x32 };
 export const mixerEngines = {
-	noMixer: NoMixerEngine /* , someOtherMixer: SomeOtherMixerEngine */,
+	noMixer: NoMixerEngine, x32: X32Engine
 };
 
 export interface MixerDefinition extends MixerDefNode {

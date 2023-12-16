@@ -1,5 +1,3 @@
-import * as dgram from 'dgram';
-
 export class MixerLeaf {
 	private _value: MixerDefLeaf['default'];
 	readonly type: MixerDefLeaf['_type'];
